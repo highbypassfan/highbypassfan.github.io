@@ -13,19 +13,33 @@
       display: flex;
     }
 
-    /* red racing stripe */
+    /* dual red stripes with gap */
+    .stripe-container {
+      display: flex;
+      flex-direction: column;
+      position: fixed;
+      top: 0;
+      left: 0;
+      height: 100vh;
+      width: 8px; /* 3 + 2 + 3 */
+      z-index: 1000;
+      background-color: black; /* gap color */
+    }
+
     .stripe {
-      width: 4px;
+      width: 3px;
       background-color: red;
       height: 100vh;
-      position: fixed;
-      left: 0;
-      top: 0;
-      z-index: 1000;
+    }
+
+    .gap {
+      width: 2px;
+      background-color: black;
+      height: 100vh;
     }
 
     .content {
-      margin-left: 6px; /* space between stripe and content */
+      margin-left: 10px; /* some breathing room from stripe */
       flex: 1;
     }
 
@@ -53,7 +67,11 @@
   </style>
 </head>
 <body>
-  <div class="stripe"></div>
+  <div class="stripe-container">
+    <div class="stripe"></div>
+    <div class="gap"></div>
+    <div class="stripe"></div>
+  </div>
 
   <div class="content">
     <nav>
