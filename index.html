@@ -10,6 +10,23 @@
       font-family: Consolas, monospace;
       background-color: #000;
       color: #fff;
+      display: flex;
+    }
+
+    /* red racing stripe */
+    .stripe {
+      width: 4px;
+      background-color: red;
+      height: 100vh;
+      position: fixed;
+      left: 0;
+      top: 0;
+      z-index: 1000;
+    }
+
+    .content {
+      margin-left: 6px; /* space between stripe and content */
+      flex: 1;
     }
 
     nav {
@@ -36,16 +53,20 @@
   </style>
 </head>
 <body>
-  <nav>
-    <a href="articles.html">Articles</a>
-    <a href="projects.html">Projects</a>
-    <a href="datastream.html">Datastream</a>
-    <a href="engineering-tips.html">Engineering Tips</a>
-  </nav>
+  <div class="stripe"></div>
 
-  <main>
-    <h1>hello world</h1>
-    <p>welcome to the site. content coming soon™</p>
-  </main>
+  <div class="content">
+    <nav>
+      <a href="articles.html">Articles</a>
+      <a href="projects.html">Projects</a>
+      <a href="datastream.html">Datastream</a>
+      <a href="engineering-tips.html">Engineering Tips</a>
+    </nav>
+
+    <main>
+      <h1>hello world</h1>
+      <p>welcome to the site. content coming soon™</p>
+    </main>
+  </div>
 </body>
 </html>
