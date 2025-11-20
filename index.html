@@ -100,9 +100,36 @@
         font-size: 1.1rem;
       }
     }
-  </style>
+    /* racing stripes */
+  .racing-stripes {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 8px; /* 3px line + 2px gap + 3px line */
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+    z-index: 2000;
+    pointer-events: none;
+  }
+  .stripe{
+    flex: none;
+    width: 3px;
+    background: red;
+  }
+  .gap{
+    flex: none;
+    width: 2px;
+    background: transparent;
+  }
+</style>
 </head>
 <body>
+  <div class="racing-stripes">
+    <div class="stripe"></div>
+    <div class="gap"></div>
+    <div class="stripe"></div>
+  </div>
   <div class="top-nav">
     <a href="#">link 1</a>
     <a href="#">link 2</a>
