@@ -105,26 +105,31 @@
     position: fixed;
     top: 0;
     left: 0;
-    width: 8px; /* 3px line + 2px gap + 3px line */
+    width: 8px; /* 3px + 2px + 3px */
     height: 100vh;
     display: flex;
-    flex-direction: column;
+    flex-direction: row;
     z-index: 2000;
     pointer-events: none;
   }
-  .stripe{
-    flex: none;
+  .stripe {
     width: 3px;
+    height: 100vh;
     background: red;
   }
-  .gap{
-    flex: none;
+  .gap {
     width: 2px;
-    background: transparent;
+    height: 100vh;
+    background: black;
   }
 </style>
 </head>
 <body>
+  <div class="racing-stripes">
+    <div class="stripe"></div>
+    <div class="gap"></div>
+    <div class="stripe"></div>
+  </div>
   <div class="racing-stripes">
     <div class="stripe"></div>
     <div class="gap"></div>
