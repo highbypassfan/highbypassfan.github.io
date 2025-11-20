@@ -1,189 +1,155 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>home</title>
-
-<style>
-  body {
-    margin: 0;
-    font-family: Consolas, monospace;
-    background: #000;
-    color: #fff;
-  }
-
-  /* racing stripes */
-  .stripe-container {
-    display: flex;
-    flex-direction: row;
-    position: fixed;
-    top: 0; left: 0;
-    width: 8px; height: 100vh;
-    z-index: 1000;
-  }
-  .stripe { width: 3px; background: red; }
-  .gap { width: 2px; background: black; }
-
-  .page {
-    margin-left: 12px;
-    padding: 0;
-  }
-
-  nav {
-    background: #111;
-    padding: 1rem;
-    display: flex;
-    gap: 2rem;
-    border-bottom: 1px solid #333;
-  }
-  nav a {
-    color: #fff;
-    text-decoration: none;
-    font-weight: bold;
-  }
-  nav a:hover { text-decoration: underline; }
-
-  /* base grid for desktop */
-  .grid {
-    display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    grid-template-rows: repeat(2, 40vh);
-    gap: 6px;
-    padding: 6px;
-  }
-
-  .cell {
-    position: relative;
-    background: #111;
-    overflow: hidden;
-    border: 1px solid #222;
-  }
-
-  /* images */
-  .cell img {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-    display: block;
-    opacity: 0.85;
-    transition: opacity 0.25s ease;
-  }
-
-  .cell:hover img {
-    opacity: 0.6;
-    cursor: pointer;
-  }
-
-  /* overlays: hidden by default */
-  .title, .desc {
-    position: absolute;
-    padding: 4px 6px;
-    background: rgba(0, 0, 0, 0.5);
-    opacity: 0;
-    transition: opacity 0.2s ease;
-  }
-
-  .title {
-    top: 6px; left: 8px;
-    font-size: 0.9rem;
-  }
-
-  .desc {
-    bottom: 6px; right: 8px;
-    font-size: 0.75rem;
-  }
-
-  /* show overlays on hover */
-  .cell:hover .title,
-  .cell:hover .desc {
-    opacity: 1;
-  }
-
-  /* link covers whole tile */
-  .cell a {
-    position: absolute;
-    inset: 0;
-    z-index: 10;
-  }
-
-  .text-block {
-    padding: 1.5rem;
-    overflow: auto;
-  }
-
-  /* responsive behavior */
-  @media (max-width: 900px) {
-    .grid {
-      grid-template-columns: 1fr 1fr;
-      grid-template-rows: auto;
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <style>
+    body {
+      margin: 0;
+      font-family: sans-serif;
+      background: #111;
+      color: #fff;
+      overflow-x: hidden;
     }
-  }
 
-  @media (max-width: 600px) {
-    .grid {
-      grid-template-columns: 1fr;
+    /* top nav */
+    .top-nav {
+      white-space: nowrap;
+      overflow-x: auto;
+      overflow-y: hidden;
+      display: flex;
+      gap: 1rem;
+      padding: 1rem;
+      border-bottom: 1px solid #444;
     }
-  }
-</style>
+    .top-nav a {
+      text-decoration: none;
+      color: #fff;
+      font-size: 1rem;
+      flex: 0 0 auto;
+    }
+
+    /* grid */
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      grid-template-rows: repeat(2, 40vh);
+      width: 100vw;
+      height: 80vh;
+    }
+
+    .cell {
+      position: relative;
+      overflow: hidden;
+      border: 1px solid #222;
+    }
+
+    .text-cell {
+      padding: 2rem;
+      font-size: 1.4rem;
+      line-height: 1.4;
+      background: #181818;
+    }
+
+    .img-cell img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      transition: 0.3s ease;
+    }
+
+    .overlay-title {
+      position: absolute;
+      top: 0.5rem;
+      left: 0.5rem;
+      opacity: 0;
+      transition: opacity 0.3s ease;
+      font-weight: bold;
+    }
+
+    .overlay-desc {
+      position: absolute;
+      bottom: 0.5rem;
+      right: 0.5rem;
+      opacity: 0;
+      transition: opacity 0.3s ease;
+      font-size: 0.9rem;
+    }
+
+    .img-cell:hover img {
+      filter: brightness(60%);
+    }
+    .img-cell:hover .overlay-title,
+    .img-cell:hover .overlay-desc {
+      opacity: 1;
+    }
+
+    .img-cell a {
+      position: absolute;
+      inset: 0;
+      z-index: 10;
+    }
+
+    /* responsive */
+    @media (max-width: 900px) {
+      .grid {
+        grid-template-columns: 1fr;
+        grid-template-rows: repeat(6, 40vh);
+        height: auto;
+      }
+      .text-cell {
+        font-size: 1.1rem;
+      }
+    }
+  </style>
 </head>
-
 <body>
-<div class="stripe-container">
-  <div class="stripe"></div>
-  <div class="gap"></div>
-  <div class="stripe"></div>
-</div>
-
-<div class="page">
-  <nav>
-    <a href="articles.html">articles</a>
-    <a href="projects.html">projects</a>
-    <a href="datastream.html">datastream</a>
-    <a href="engineering-tips.html">engineering tips</a>
-  </nav>
+  <div class="top-nav">
+    <a href="#">link 1</a>
+    <a href="#">link 2</a>
+    <a href="#">link 3</a>
+    <a href="#">link 4</a>
+    <a href="#">link 5</a>
+  </div>
 
   <div class="grid">
-    <div class="cell text-block">
-      <h2>welcome</h2>
-      <p>this is the text area. put whatever intro, manifesto, or cryptic koan you want here.</p>
+    <div class="cell text-cell">
+      your text section here
     </div>
 
-    <div class="cell">
-      <img src="img1.jpg" alt="">
-      <div class="title">project 1</div>
-      <div class="desc">small description</div>
-      <a href="project1.html"></a>
+    <div class="cell img-cell">
+      <img src="" alt="" />
+      <div class="overlay-title">title</div>
+      <div class="overlay-desc">description</div>
+      <a href="#"></a>
     </div>
 
-    <div class="cell">
-      <img src="img2.jpg" alt="">
-      <div class="title">project 2</div>
-      <div class="desc">small description</div>
-      <a href="project2.html"></a>
+    <div class="cell img-cell">
+      <img src="" alt="" />
+      <div class="overlay-title">title</div>
+      <div class="overlay-desc">description</div>
+      <a href="#"></a>
     </div>
 
-    <div class="cell">
-      <img src="img3.jpg" alt="">
-      <div class="title">project 3</div>
-      <div class="desc">small description</div>
-      <a href="project3.html"></a>
+    <div class="cell img-cell">
+      <img src="" alt="" />
+      <div class="overlay-title">title</div>
+      <div class="overlay-desc">description</div>
+      <a href="#"></a>
     </div>
 
-    <div class="cell">
-      <img src="img4.jpg" alt="">
-      <div class="title">project 4</div>
-      <div class="desc">small description</div>
-      <a href="project4.html"></a>
+    <div class="cell img-cell">
+      <img src="" alt="" />
+      <div class="overlay-title">title</div>
+      <div class="overlay-desc">description</div>
+      <a href="#"></a>
     </div>
 
-    <div class="cell">
-      <img src="img5.jpg" alt="">
-      <div class="title">project 5</div>
-      <div class="desc">small description</div>
-      <a href="project5.html"></a>
+    <div class="cell img-cell">
+      <img src="" alt="" />
+      <div class="overlay-title">title</div>
+      <div class="overlay-desc">description</div>
+      <a href="#"></a>
     </div>
   </div>
-</div>
 </body>
 </html>
