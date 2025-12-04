@@ -20,7 +20,7 @@
       display: flex;
       gap: 1rem;
       padding: 1rem;
-      border-bottom: 1px solid #444;
+      border-bottom: 1px solid #222;
     }
 
     .top-nav a {
@@ -33,15 +33,14 @@
     /* grid layout */
     .grid {
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
-      grid-auto-rows: minmax(200px, 40vh);
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 0;
       width: 100vw;
     }
 
     .cell {
       position: relative;
       overflow: hidden;
-      /* no borders, no gaps; images will butt up against each other */
     }
 
     .text-cell {
@@ -50,7 +49,11 @@
       line-height: 1.4;
       background: #000;
     }
-
+    
+    .img-cell {  
+      aspect-ratio: 4 / 3;       /* height = 3/4 of width */
+    }
+    
     .img-cell img {
       width: 100%;
       height: 100%;
@@ -88,9 +91,9 @@
     }
 
     /* responsive tweaks */
-    @media (max-width: 900px) {
-      .text-cell {
-        font-size: 1.1rem;
+     @media (max-width: 900px) {
+      .grid {
+      grid-template-columns: 1fr;
       }
     }
   </style>
