@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+/* this website is a mixture of vibe and normal coded, I got the bones with AI and then used that as a jumping off point to learn the basics (i.e. when I have to change things I ask how they work and then do manually) */
 <head>
   <meta name="viewport"
         content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
@@ -90,7 +91,7 @@
       z-index: 10;
     }
 
-    /* responsive tweaks */
+    /* so it doesn't freak out on mobile (an inferior way to interact with the web!) */
      @media (max-width: 900px) {
       .grid {
       grid-template-columns: 1fr;
@@ -109,11 +110,9 @@
   <div class="grid">
     <!-- text block -->
     <div class="cell text-cell">
-      your text section here. you can put whatever intro / mission statement /
-      currently-obsessing-over block you want in this slot.
+      Hyperborea is a strange thing. 
     </div>
 
-    <!-- image cells: duplicate these as needed, it won't break -->
     <div class="cell img-cell">
       <img src="images/sheepbarn.jpg" alt="project 1">
       <div class="overlay-title">project 1</div>
