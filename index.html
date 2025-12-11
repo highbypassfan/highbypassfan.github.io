@@ -45,8 +45,8 @@
 
     .text-cell {
       padding: 2rem;
-      font-size: 1.4rem;
-      line-height: 1.4;
+      font-size: 1.25rem;
+      line-height: 1.25;
       background: #000;
     }
     
@@ -96,12 +96,16 @@
     }
     /* this website is a mixture of vibe and normal coded, I got the bones with AI and then used that as a jumping off point to learn the basics (i.e. when I have to change things I ask how they work and then do manually) */
     
-    /* so it doesn't freak out on mobile (an inferior way to interact with the web!) */
+    /* so it doesn't freak out on mobile (an inferior way to interact with the web frankly!) */
      @media (max-width: 900px) {
       .grid {
       grid-template-columns: 1fr;
       }
     }
+    .text-cell p {
+    margin: 0 0 1rem 0;   
+    line-height: 1.4;    
+    }  
   </style>
 </head>
 <body>
@@ -114,9 +118,14 @@
 
   <div class="grid">
     <!-- text block -->
-    <div class="cell text-cell">
-      I'm Working On It! 
-    </div>
+<div class="cell text-cell">
+  <p>Website of Isaiah Stewman. I do Mechanical Engineering, Winemaking, Electrician/handyman work, Car Repair, and various other occasionally useful things. My goal is to be as useful and effective as I know I am capable of (on the order of 1000x my current output).</p>
+
+  <p>I have made this website because I aggressively file away links and notes on my personal services and believe that some other people may find them useful. Also to increase my luck cross section (link to thread).</p>
+
+  <p>Mankind needs more useful people who live up to their God-given talents.</p>
+</div>
+
 
     <div class="cell img-cell">
       <img src="images/toolbox/toolbox_mounted.webp" alt="project 1">
