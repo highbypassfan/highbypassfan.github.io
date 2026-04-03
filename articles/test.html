@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta name="viewport"
+        content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>Test Article | Isaiah Stewman</title>
+  <style>
+    :root { --bg: #000; --fg: #fff; --line: #252525; --accent: #ff3b30; --muted: #b8b8b8; }
+    * { box-sizing: border-box; }
+    body { margin: 0; font-family: Consolas, monospace; background: var(--bg); color: var(--fg); }
+    a { color: inherit; text-decoration: none; }
+    .top-nav { white-space: nowrap; overflow-x: auto; display: flex; gap: 1rem; padding: 1rem; border-bottom: 1px solid var(--line); }
+    .top-nav a:hover,
+    .top-nav a.active { color: var(--accent); }
+    .page { max-width: 900px; margin: 0 auto; padding: 2rem 1rem 4rem; }
+    .eyebrow { color: var(--accent); margin-bottom: 0.75rem; font-size: 0.95rem; }
+    h1 { margin: 0 0 0.75rem 0; font-size: 2.2rem; font-weight: normal; letter-spacing: 0.04em; }
+    .deck { margin: 0 0 1.5rem 0; color: var(--muted); line-height: 1.6; max-width: 70ch; }
+    .hero { width: 100%; display: block; border: 1px solid var(--line); margin-bottom: 2rem; background: #050505; }
+    .section { padding-top: 1rem; border-top: 1px solid var(--line); margin-top: 1rem; }
+    .section h2 { margin: 0 0 0.75rem 0; font-size: 1.25rem; font-weight: normal; color: var(--accent); }
+    .post-body a { color: var(--accent); }
+    .post-body p,
+    .post-body li { line-height: 1.6; }
+    .post-body ul,
+    .post-body ol { margin: 0.75rem 0 0 1.25rem; padding: 0; }
+    .align-center { text-align: center; }
+    .align-left { text-align: left; }
+    .post-image {
+      width: 100%;
+      margin: 2rem auto;
+      text-align: center;
+    }
+    .post-image img {
+      display: block;
+      max-width: 100%;
+      margin: 0 auto;
+      border: 1px solid var(--line);
+    }
+    .post-image figcaption {
+      margin-top: 0.65rem;
+      color: var(--muted);
+      font-size: 0.95rem;
+      line-height: 1.5;
+    }
+  </style>
+</head>
+<body>
+  <div class="top-nav">
+    <a href="../index.html">home</a>
+    <a href="../articles.html" class="active">articles</a>
+    <a href="../projects.html">projects</a>
+    <a href="#">datastream</a>
+    <a href="../articles/engineering_tips_standard.html">engineering tips</a>
+  </div>
+  <main class="page">
+    <div class="eyebrow" id="previewMeta">2026-03-20 | Test</div>
+    <h1 id="previewTitle">Test Article</h1>
+    <p class="deck" id="previewDeck">This is a test article</p>
+    <img class="hero" id="previewHero" src="../images/test/Bricks.jfif" alt="Test Article" />
+    <div class="post-body" id="previewBody">
+      <p></p><p></p><h2></h2><figure class="post-image"><a href="highbypassfan.github.io">highbypassfan.github.io</a>&nbsp;Test Article Please ignore.&nbsp;</figure><p></p><p><br></p><h2>abcd</h2><p>testing testing testign wow wowowowowoowowowow</p><figure class="post-image"><img src="../images/test/Outrigger_3.jfif" alt="Outrigger!"><figcaption>Outrigger!</figcaption></figure><p><br></p><p>test2&nbsp;</p><p>wow timestamps!</p><p>this is strange&nbsp;</p><p>weird</p><p class="align-center">testing post preview - wow this is great</p><p class="align-center">center aligned and everything</p><p class="align-center"><br></p><p class="align-left"><b>BOLD</b></p><p class="align-left"><b>bold</b></p><p class="align-left"><a href="lego.com">Hyperlink test</a></p><p class="align-left"><b><a href="lego.com">Bold HYPERLINK <i>test</i></a></b></p><p class="align-left">cool</p><p class="align-left"><br></p>
+    </div>
+  </main>
+</body>
+</html>

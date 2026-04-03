@@ -1,0 +1,169 @@
+{
+  "articles": [
+    {
+      "slug": "test",
+      "title": "Test Article",
+      "date": "2026-03-20",
+      "summary": "This is a test article",
+      "tags": [
+        "Test"
+      ],
+      "image": "images/test/Bricks.jfif",
+      "path": "articles/test.html",
+      "navSection": "articles",
+      "bodyHtml": "<p></p><p></p><h2></h2><figure class=\"post-image\"><a href=\"highbypassfan.github.io\">highbypassfan.github.io</a>&nbsp;Test Article Please ignore.&nbsp;</figure><p></p><p><br></p><h2>abcd</h2><p>testing testing testign wow wowowowowoowowowow</p><figure class=\"post-image\"><img src=\"../images/test/Outrigger_3.jfif\" alt=\"Outrigger!\"><figcaption>Outrigger!</figcaption></figure><p><br></p><p>test2&nbsp;</p><p>wow timestamps!</p><p>this is strange&nbsp;</p><p>weird</p><p class=\"align-center\">testing post preview - wow this is great</p><p class=\"align-center\">center aligned and everything</p><p class=\"align-center\"><br></p><p class=\"align-left\"><b>BOLD</b></p><p class=\"align-left\"><b>bold</b></p><p class=\"align-left\"><a href=\"lego.com\">Hyperlink test</a></p><p class=\"align-left\"><b><a href=\"lego.com\">Bold HYPERLINK <i>test</i></a></b></p><p class=\"align-left\">cool</p><p class=\"align-left\"><br></p>"
+    },
+    {
+      "slug": "engineering_tips_standard",
+      "title": "Standard Engineering Article",
+      "date": "2026-03-18",
+      "summary": "A baseline article format for short engineering notes: problem, constraints, solution, and what to watch the next time around.",
+      "tags": [
+        "Engineering Tips",
+        "Template",
+        "Reference Format"
+      ],
+      "image": "temp/Bend_Lines.jfif",
+      "path": "articles/engineering_tips_standard.html",
+      "navSection": "engineering tips",
+      "bodyHtml": "<section class=\"section\"><h2>Problem</h2><p>State the actual issue in plain language. If somebody can read only this section and know what failed, what needed to be built, or what question had to be answered, the article is already useful.</p></section><section class=\"section\"><h2>Constraints</h2><ul><li>What physical limits mattered.</li><li>What budget, time, or tool limits mattered.</li><li>What tradeoffs were non-negotiable.</li></ul></section><section class=\"section\"><h2>Solution</h2><p>Describe what you did and why that approach won over the alternatives. This is where the engineering judgment belongs, not just the final answer.</p></section><section class=\"section\"><h2>What To Watch Next Time</h2><ul><li>What was close to failing.</li><li>What should be measured earlier.</li><li>What future-you would want documented.</li></ul></section>"
+    },
+    {
+      "slug": "outrigger_notes",
+      "title": "Outrigger Notes",
+      "date": "2026-03-17",
+      "summary": "Early notes on stability, geometry, and what to inspect first when the support structure matters more than the finish.",
+      "tags": [
+        "Structures",
+        "Stub Article",
+        "Field Notes"
+      ],
+      "image": "temp/Outrigger.jfif",
+      "path": "articles/outrigger_notes.html",
+      "navSection": "articles",
+      "bodyHtml": "<section class=\"section\"><h2>Purpose</h2><p>Use this page to capture the actual geometry, where the loads go, and what assumptions need to be checked in the field.</p></section><section class=\"section\"><h2>Good Notes To Add</h2><ul><li>Measurements and stance dimensions.</li><li>What flexed more than expected.</li><li>What would make setup faster next time.</li></ul></section>"
+    },
+    {
+      "slug": "roof_repair_sequence",
+      "title": "Roof Repair Sequence",
+      "date": "2026-03-15",
+      "summary": "Ordering the work so inspection, prep, and repair happen in a sequence that minimizes rework and surprises.",
+      "tags": [
+        "Repair",
+        "Planning",
+        "Stub Article"
+      ],
+      "image": "temp/Roof1.jfif",
+      "path": "articles/roof_repair_sequence.html",
+      "navSection": "articles",
+      "bodyHtml": "<section class=\"section\"><h2>Purpose</h2><p>Capture the sequence while it is still fresh so future jobs benefit from what went wrong, what slowed the work, and what inspection should happen earlier.</p></section><section class=\"section\"><h2>Good Notes To Add</h2><ul><li>What prep turned out to be mandatory.</li><li>What conditions changed the repair plan.</li><li>What order kept the work dry and safe.</li></ul></section>"
+    },
+    {
+      "slug": "trailer_setup_notes",
+      "title": "Trailer Setup Notes",
+      "date": "2026-03-12",
+      "summary": "Basic notes on load path, attachment decisions, and the checks worth doing before a setup becomes habitual.",
+      "tags": [
+        "Transport",
+        "Checklist",
+        "Stub Article"
+      ],
+      "image": "temp/Trailer.jfif",
+      "path": "articles/trailer_setup_notes.html",
+      "navSection": "articles",
+      "bodyHtml": "<section class=\"section\"><h2>Purpose</h2><p>Use this article to record what setup choices improved safety, reduced sway risk, or made loading and unloading less awkward in practice.</p></section><section class=\"section\"><h2>Good Notes To Add</h2><ul><li>Load placement and tongue weight observations.</li><li>Attachment points and failure concerns.</li><li>Pre-departure checks worth making habitual.</li></ul></section>"
+    },
+    {
+      "slug": "toolbox_mount",
+      "title": "Toolbox Mount",
+      "date": "2026-03-10",
+      "summary": "Mounting a truck toolbox cleanly, making it serviceable, and capturing the engineering decisions that matter more than the final photo.",
+      "tags": [
+        "Mechanical",
+        "Process Notes",
+        "Field Fixes"
+      ],
+      "image": "images/toolbox/toolbox_mounted.webp",
+      "path": "articles/toolbox_mount.html",
+      "navSection": "articles",
+      "bodyHtml": "<section class=\"section\"><h2>Problem</h2><p>The toolbox needed to stay put under vibration, survive ordinary abuse, and remain easy to remove or service. The main goal was not elegance for its own sake. The goal was a useful, repeatable mounting approach that does not create future headaches.</p></section><section class=\"section\"><h2>Constraints</h2><ul><li>Hold securely without relying on sketchy fastener geometry.</li><li>Keep access to the box and surrounding truck bed practical.</li><li>Use materials and tools that make sense in a normal working environment.</li></ul></section><section class=\"section\"><h2>What Mattered</h2><p>The useful engineering work was in the interface details: where load actually goes, where adjustment is possible, and how future maintenance will happen without fighting the original installation.</p></section><section class=\"section\"><h2>Next Notes To Capture</h2><ul><li>Fastener sizes and spacing.</li><li>Any wear points after real use.</li><li>What you would simplify if building the second version.</li></ul></section>"
+    },
+    {
+      "slug": "brickwork_reference",
+      "title": "Brickwork Reference",
+      "date": "2026-03-08",
+      "summary": "A place to capture layout observations, alignment checks, and the small details that keep masonry work from drifting over time.",
+      "tags": [
+        "Layout",
+        "Reference",
+        "Stub Article"
+      ],
+      "image": "temp/Bricks.jfif",
+      "path": "articles/brickwork_reference.html",
+      "navSection": "articles",
+      "bodyHtml": "<section class=\"section\"><h2>Purpose</h2><p>Use this page to collect the layout tricks, measurement checks, and visual standards that make repeatable brickwork easier.</p></section><section class=\"section\"><h2>Good Notes To Add</h2><ul><li>Reference lines and alignment checks.</li><li>Where drift starts showing up.</li><li>What inspection catches errors early.</li></ul></section>"
+    }
+  ],
+  "projects": [
+    {
+      "slug": "truck_toolbox_mount",
+      "title": "Truck Toolbox Mount",
+      "date": "2026-03-18",
+      "summary": "Mounting a truck toolbox with enough stiffness, serviceability, and plain mechanical honesty to survive actual use.",
+      "tags": [
+        "Mechanical",
+        "Truck",
+        "Project"
+      ],
+      "image": "images/toolbox/toolbox_mounted.webp",
+      "path": "projects/truck_toolbox_mount.html",
+      "navSection": "projects",
+      "bodyHtml": "<section class=\"section\"><h2>Objective</h2><p>Create a secure mount that survives vibration, leaves the bed usable, and stays maintainable after the first install.</p></section><section class=\"section\"><h2>What Matters</h2><ul><li>Real load path through the mount and bed.</li><li>Fastener access for maintenance.</li><li>Enough stiffness without overbuilding blindly.</li></ul></section>"
+    },
+    {
+      "slug": "outrigger_layout_study",
+      "title": "Outrigger Layout Study",
+      "date": "2026-03-16",
+      "summary": "Studying stance, footprint, and support geometry before committing to a final arrangement.",
+      "tags": [
+        "Structures",
+        "Layout",
+        "Project"
+      ],
+      "image": "temp/Outrigger_2.jfif",
+      "path": "projects/outrigger_layout_study.html",
+      "navSection": "projects",
+      "bodyHtml": "<section class=\"section\"><h2>Objective</h2><p>Collect the dimensions and assumptions that determine whether the support layout behaves the way it should in the field.</p></section><section class=\"section\"><h2>What Matters</h2><ul><li>Stance width and contact points.</li><li>How level conditions affect setup.</li><li>What deforms first under load.</li></ul></section>"
+    },
+    {
+      "slug": "roof_patch_work",
+      "title": "Roof Patch Work",
+      "date": "2026-03-14",
+      "summary": "A work log for sequencing roof repair so prep, weather, and access all line up cleanly.",
+      "tags": [
+        "Repair",
+        "Field Work",
+        "Project"
+      ],
+      "image": "temp/Roof2.jfif",
+      "path": "projects/roof_patch_work.html",
+      "navSection": "projects",
+      "bodyHtml": "<section class=\"section\"><h2>Objective</h2><p>Map the repair work so the right inspection and prep happen before material gets opened or conditions change.</p></section><section class=\"section\"><h2>What Matters</h2><ul><li>Dry-in sequence.</li><li>Access and safety planning.</li><li>How much of the old work should be removed.</li></ul></section>"
+    },
+    {
+      "slug": "trailer_retrofit",
+      "title": "Trailer Retrofit",
+      "date": "2026-03-11",
+      "summary": "Tracking attachment, loading, and practical transport decisions in one place.",
+      "tags": [
+        "Transport",
+        "Retrofit",
+        "Project"
+      ],
+      "image": "temp/Trailer.jfif",
+      "path": "projects/trailer_retrofit.html",
+      "navSection": "projects",
+      "bodyHtml": "<section class=\"section\"><h2>Objective</h2><p>Improve trailer usability and safety without creating new maintenance problems or weird loading behavior.</p></section><section class=\"section\"><h2>What Matters</h2><ul><li>Attachment and reinforcement points.</li><li>Load placement and tie-down practice.</li><li>What setup should be standardized.</li></ul></section>"
+    }
+  ]
+}

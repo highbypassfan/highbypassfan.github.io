@@ -1,0 +1,479 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Static Post Editor</title>
+  <style>
+    :root {
+      --bg: #000;
+      --panel: #090909;
+      --line: #252525;
+      --fg: #fff;
+      --muted: #b8b8b8;
+      --accent: #ff3b30;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: Consolas, monospace;
+      background: var(--bg);
+      color: var(--fg);
+      overflow-x: hidden;
+    }
+    .page {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 1.25rem 1rem 3rem;
+    }
+    h1 {
+      margin: 0 0 1rem 0;
+      font-weight: normal;
+      font-size: 1.75rem;
+      letter-spacing: 0.04em;
+    }
+    .topbar,
+    .layout,
+    .row,
+    .toolbar,
+    .type-toggle,
+    .actions {
+      display: flex;
+      gap: 0.75rem;
+      flex-wrap: wrap;
+    }
+    .topbar {
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 1rem;
+    }
+    button,
+    input,
+    textarea {
+      font: inherit;
+    }
+    button,
+    .button-like {
+      border: 1px solid var(--line);
+      background: var(--panel);
+      color: var(--fg);
+      padding: 0.65rem 0.85rem;
+    }
+    button:hover,
+    .button-like:hover {
+      border-color: var(--accent);
+      color: var(--accent);
+      cursor: pointer;
+    }
+    .layout {
+      align-items: flex-start;
+    }
+    .panel {
+      border: 1px solid var(--line);
+      background: var(--panel);
+      padding: 1rem;
+      flex: 1 1 340px;
+      min-width: 320px;
+    }
+    .panel h2 {
+      margin: 0 0 1rem 0;
+      font-size: 1rem;
+      font-weight: normal;
+      color: var(--accent);
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+    }
+    .field {
+      margin-bottom: 1rem;
+    }
+    .field label {
+      display: block;
+      margin-bottom: 0.35rem;
+      color: var(--muted);
+    }
+    .field input,
+    .field textarea {
+      width: 100%;
+      border: 1px solid var(--line);
+      background: #020202;
+      color: var(--fg);
+      padding: 0.65rem 0.75rem;
+    }
+    textarea {
+      min-height: 90px;
+      resize: vertical;
+    }
+    .type-toggle label {
+      border: 1px solid var(--line);
+      padding: 0.65rem 0.85rem;
+      background: #020202;
+      cursor: pointer;
+    }
+    .type-toggle input {
+      display: none;
+    }
+    .type-toggle input:checked + span {
+      color: var(--accent);
+    }
+    .restore-banner {
+      display: none;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.75rem;
+      border: 1px solid var(--line);
+      background: #050505;
+      padding: 0.85rem 1rem;
+      margin-bottom: 1rem;
+    }
+    .restore-banner.visible {
+      display: flex;
+    }
+    .restore-actions {
+      display: flex;
+      gap: 0.5rem;
+      flex-wrap: wrap;
+    }
+    .editor {
+      min-height: 360px;
+      border: 1px solid var(--line);
+      background: #020202;
+      padding: 0.85rem;
+      line-height: 1.55;
+      outline: none;
+    }
+    .editor a {
+      color: var(--accent);
+    }
+    .editor .post-image {
+      margin: 1.5rem auto;
+      text-align: center;
+      border: 1px dashed var(--line);
+      padding: 0.75rem;
+      max-width: 100%;
+    }
+    .editor .post-image img {
+      display: block;
+      max-width: 100%;
+      margin: 0 auto;
+      border: 1px solid var(--line);
+    }
+    .editor .post-image figcaption {
+      margin-top: 0.65rem;
+      color: var(--muted);
+      font-size: 0.95rem;
+      line-height: 1.5;
+    }
+    .editor .align-center {
+      text-align: center;
+    }
+    .editor .align-left {
+      text-align: left;
+    }
+    .toolbar button {
+      padding: 0.45rem 0.65rem;
+    }
+    .dropzone {
+      border: 1px dashed var(--line);
+      padding: 1rem;
+      color: var(--muted);
+      min-height: 80px;
+    }
+    .image-list {
+      margin-top: 0.75rem;
+      display: grid;
+      gap: 0.5rem;
+    }
+    .image-item {
+      display: flex;
+      justify-content: space-between;
+      gap: 0.75rem;
+      padding: 0.5rem 0.65rem;
+      border: 1px solid var(--line);
+      background: #050505;
+    }
+    .image-item-main {
+      flex: 1 1 auto;
+      display: grid;
+      gap: 0.5rem;
+    }
+    .image-item-main input {
+      width: 100%;
+      border: 1px solid var(--line);
+      background: #020202;
+      color: var(--fg);
+      padding: 0.45rem 0.55rem;
+    }
+    .image-item-actions {
+      display: flex;
+      gap: 0.5rem;
+      align-items: flex-start;
+      flex-wrap: wrap;
+    }
+    .hero-toggle {
+      width: 2.1rem;
+      min-width: 2.1rem;
+      padding: 0.45rem 0;
+      text-align: center;
+      background: #111;
+      color: #777;
+    }
+    .hero-toggle.active {
+      background: var(--accent);
+      border-color: var(--accent);
+      color: #fff;
+    }
+    .modal {
+      position: fixed;
+      inset: 0;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      background: rgba(0, 0, 0, 0.8);
+      z-index: 30;
+    }
+    .modal.open {
+      display: flex;
+    }
+    .modal-panel {
+      width: min(720px, calc(100vw - 2rem));
+      max-height: calc(100vh - 2rem);
+      overflow: auto;
+      border: 1px solid var(--line);
+      background: var(--panel);
+      padding: 1rem;
+    }
+    .modal-top {
+      display: flex;
+      justify-content: space-between;
+      gap: 0.75rem;
+      align-items: center;
+      margin-bottom: 1rem;
+    }
+    .modal-list {
+      display: grid;
+      gap: 0.5rem;
+    }
+    .modal-item {
+      display: grid;
+      gap: 0.25rem;
+      width: 100%;
+      text-align: left;
+      padding: 0.75rem;
+    }
+    .modal-item small {
+      color: var(--muted);
+    }
+    .preview-drawer {
+      position: fixed;
+      top: 0;
+      bottom: 0;
+      left: 0;
+      width: min(480px, calc(100vw - 3.25rem));
+      background: #050505;
+      border-right: 0;
+      overflow: visible;
+      transform: translateX(-100%);
+      transition: transform 0.2s ease;
+      z-index: 20;
+      display: flex;
+      flex-direction: column;
+    }
+    .preview-drawer.open {
+      transform: translateX(0);
+      border-right: 1px solid var(--line);
+    }
+    .preview-toggle {
+      position: absolute;
+      top: 50%;
+      right: -3.25rem;
+      transform: translateY(-50%);
+      width: 3.25rem;
+      height: 6rem;
+      writing-mode: vertical-rl;
+      text-orientation: mixed;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      border-left: 0;
+    }
+    .preview-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 0.75rem;
+      padding: 1rem;
+      border-bottom: 1px solid var(--line);
+      visibility: hidden;
+    }
+    .preview-drawer.open .preview-header {
+      visibility: visible;
+    }
+    .preview-frame {
+      width: 100%;
+      flex: 1 1 auto;
+      border: 0;
+      background: #000;
+      display: block;
+      visibility: hidden;
+    }
+    .preview-drawer.open .preview-frame {
+      visibility: visible;
+    }
+    .status {
+      margin-top: 1rem;
+      color: var(--muted);
+      white-space: pre-wrap;
+    }
+    .status strong {
+      color: var(--accent);
+    }
+    .hint {
+      color: var(--muted);
+      font-size: 0.95rem;
+      line-height: 1.5;
+    }
+    @media (max-width: 900px) {
+      .layout {
+        flex-direction: column;
+      }
+      .panel {
+        width: 100%;
+      }
+      .restore-banner {
+        flex-direction: column;
+        align-items: flex-start;
+      }
+    }
+  </style>
+</head>
+<body>
+  <aside class="preview-drawer" id="previewDrawer" aria-label="Live preview">
+    <button class="preview-toggle" id="previewToggle" type="button" title="Open or close live preview">preview</button>
+    <div class="preview-header">
+      <strong>Live Preview</strong>
+      <span class="hint">updates while you type</span>
+    </div>
+    <iframe class="preview-frame" id="previewFrame" title="Live post preview"></iframe>
+  </aside>
+
+  <div class="modal" id="postPickerModal" aria-hidden="true">
+    <div class="modal-panel">
+      <div class="modal-top">
+        <strong>Search Posts</strong>
+        <button id="closePostPicker" type="button" title="Close post picker">close</button>
+      </div>
+      <div class="field">
+        <label for="postSearch">Search</label>
+        <input id="postSearch" type="text" placeholder="Search by title, slug, or type" />
+      </div>
+      <div class="modal-list" id="postSearchResults"></div>
+    </div>
+  </div>
+
+  <main class="page">
+    <div class="restore-banner" id="restoreBanner">
+      <div>
+        <strong>Draft recovery available.</strong>
+        <div class="hint">Text and editor state can be restored. Unsaved image files need to be re-added manually.</div>
+      </div>
+      <div class="restore-actions">
+        <button id="restoreDraft" type="button" title="Restore the saved local draft">restore</button>
+        <button id="dismissDraft" type="button" title="Discard the saved local draft">discard</button>
+      </div>
+    </div>
+
+    <div class="topbar">
+      <h1>Static Post Editor</h1>
+      <div class="actions">
+        <button id="pickRepo" type="button" title="Choose the website repo folder">pick website folder</button>
+        <button id="selectPost" type="button" title="Search and load an existing article or project">select post</button>
+        <button id="generate" type="button" title="Save the current post and rebuild index pages">save post</button>
+      </div>
+    </div>
+
+    <div class="layout">
+      <section class="panel">
+        <h2>Post Setup</h2>
+
+        <div class="field">
+          <label>Post Type</label>
+          <div class="type-toggle">
+            <label><input type="radio" name="postType" value="articles" checked /><span>article</span></label>
+            <label><input type="radio" name="postType" value="projects" /><span>project</span></label>
+          </div>
+        </div>
+
+        <div class="row">
+          <div class="field" style="flex: 2 1 260px;">
+            <label for="title">Title</label>
+            <input id="title" type="text" placeholder="Truck toolbox mount" />
+          </div>
+          <div class="field" style="flex: 1 1 160px;">
+            <label for="date">Date</label>
+            <input id="date" type="date" />
+          </div>
+        </div>
+
+        <div class="row">
+          <div class="field" style="flex: 2 1 260px;">
+            <label for="slug">Slug</label>
+            <input id="slug" type="text" placeholder="truck_toolbox_mount" />
+          </div>
+          <div class="field" style="flex: 1 1 160px;">
+            <label for="navSection">Nav Section</label>
+            <input id="navSection" type="text" value="articles" />
+          </div>
+        </div>
+
+        <div class="field">
+          <label for="summary">Summary / Deck</label>
+          <textarea id="summary" placeholder="Short one or two sentence summary for the index page and page deck."></textarea>
+        </div>
+
+        <div class="field">
+          <label for="tags">Tags</label>
+          <input id="tags" type="text" placeholder="Mechanical, Truck, Project" />
+        </div>
+
+        <div class="field">
+          <label>Images</label>
+          <input id="imagePicker" type="file" accept="image/*" multiple />
+          <div class="dropzone" id="dropzone">
+            paste images here with Ctrl+V, or use the file picker above.
+            the first image becomes the hero image unless you pick a different H button.
+          </div>
+          <div class="image-list" id="imageList"></div>
+        </div>
+
+        <p class="hint">
+          The editor writes pages into `articles/` or `projects/`, copies images into `images/&lt;slug&gt;/`,
+          updates `data/content-index.json`, and rebuilds the matching index page.
+        </p>
+      </section>
+
+      <section class="panel">
+        <h2>Body</h2>
+        <div class="toolbar">
+          <button type="button" data-command="formatBlock" data-value="p" title="Convert the current block to normal paragraph text">p</button>
+          <button type="button" data-command="formatBlock" data-value="h2" title="Convert the current block to a section heading">h2</button>
+          <button type="button" data-command="insertUnorderedList" title="Turn the current selection into a bulleted list">ul</button>
+          <button type="button" data-command="justifyLeft" title="Set the current block to normal left-aligned text">left</button>
+          <button type="button" data-command="justifyCenter" title="Center-align the current block">center</button>
+          <button type="button" data-command="bold" title="Make the selected text bold">bold</button>
+          <button type="button" data-command="italic" title="Make the selected text italic">italic</button>
+          <button type="button" data-command="undo" title="Undo the last editor action or text change">undo</button>
+          <button type="button" id="addLink" title="Turn the selected text into a hyperlink">link</button>
+          <button type="button" id="clearBody" title="Clear the body editor">clear</button>
+        </div>
+        <div id="editor" class="editor" contenteditable="true">
+          <p>Paste the post body here.</p>
+          <p>Use the toolbar for headings, lists, left or centered text, bold, italic, links, undo, and inserted images.</p>
+        </div>
+        <p class="hint" id="loadedPost">loaded: new post</p>
+        <div class="status" id="status">No repo folder selected yet.</div>
+      </section>
+    </div>
+  </main>
+
+  <script src="./static-post-editor.js"></script>
+</body>
+</html>

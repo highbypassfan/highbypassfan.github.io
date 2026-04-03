@@ -12,6 +12,10 @@
       overflow-x: hidden;
     }
 
+    * {
+      box-sizing: border-box;
+    }
+
     /* top nav */
     .top-nav {
       white-space: nowrap;
@@ -30,6 +34,29 @@
       flex: 0 0 auto;
     }
 
+    .top-nav a:hover,
+    .top-nav a.active {
+      color: #ff3b30;
+    }
+
+    .intro {
+      padding: 1.75rem 1rem 1.25rem;
+      border-bottom: 1px solid #222;
+    }
+
+    .intro-inner {
+      max-width: 1100px;
+      margin: 0 auto;
+    }
+
+    .intro p {
+      margin: 0 0 1rem 0;
+      font-size: clamp(1rem, 0.9rem + 0.55vw, 1.25rem);
+      line-height: 1.45;
+      max-width: 70ch;
+      text-align: left;
+    }
+
     /* grid layout */
     .grid {
       display: grid;
@@ -44,10 +71,7 @@
     }
 
     .text-cell {
-      padding: 2rem;
-      font-size: 1.25rem;
-      line-height: 1.25;
-      background: #000;
+      display: none;
     }
     
     .img-cell {  
@@ -102,64 +126,67 @@
       grid-template-columns: 1fr;
       }
     }
-    .text-cell p {
-    margin: 0 0 1rem 0;   
-    line-height: 1.4;    
-    }  
   </style>
 </head>
 <body>
   <div class="top-nav">
-    <a href="https://highbypassfan.github.io/articles.html">articles</a>
-    <a href="#">projects</a>
+    <a href="index.html" class="active">home</a>
+    <a href="articles.html">articles</a>
+    <a href="projects.html">projects</a>
     <a href="#">datastream</a>
-    <a href="#">engineering tips</a>
+    <a href="articles/engineering_tips_standard.html">engineering tips</a>
   </div>
 
+  <section class="intro">
+    <div class="intro-inner">
+      <p>Website of Isaiah Stewman. I do Mechanical Engineering, Winemaking, Electrician/handyman work, Car Repair, and various other occasionally useful things. My goal is to be as useful and effective as I know I am capable of (on the order of 1000x my current output).</p>
+      <!-- and also to get married but I have to find the right person :3 -->
+      <p>I have made this website because I aggressively file away links and notes on my personal services and believe that some other people may find them useful. Also to increase my luck cross section (link to thread).</p>
+      <p>Mankind needs more useful people who live up to their God-given talents.</p>
+    </div>
+  </section>
+
   <div class="grid">
-    <!-- text block -->
-<div class="cell text-cell">
-  <p>Personal website of Isaiah Stewman. (still in development) I do Mechanical Engineering, Winemaking, Electrician/handyman work, Car Repair, and various other occasionally useful things. My goal is to be as useful and effective as I know I am capable of (on the order of 1000x my current output).</p>
-<!-- and also to get married but I have to find the right person :3 -->
-  <p>I have made this website because I aggressively file away links and notes on my personal services and believe that some other people may find them useful. Also to increase my luck cross section (link to thread).</p>
-
-  <p>Mankind needs more useful people who live up to their God-given talents.</p>
-</div>
-
-
     <div class="cell img-cell">
       <img src="images/toolbox/toolbox_mounted.webp" alt="project 1">
       <div class="overlay-title">Toolbox Mount</div>
       <div class="overlay-desc">Notes from the process & some engineering tips</div>
-      <a href="https://highbypassfan.github.io/articles/toolbox_mount.html"></a>
+      <a href="articles/toolbox_mount.html"></a>
     </div>
 
     <div class="cell img-cell">
       <img src="images/sheepbarn.jpg" alt="project 2">
-      <div class="overlay-title">project 2</div>
-      <div class="overlay-desc">short description here</div>
-      <a href="https://example.com/project2"></a>
+      <div class="overlay-title">Projects</div>
+      <div class="overlay-desc">Build log index & field work notes</div>
+      <a href="projects.html"></a>
     </div>
 
     <div class="cell img-cell">
-      <img src="images/sheepbarn.jpg" alt="project 3">
-      <div class="overlay-title">project 3</div>
-      <div class="overlay-desc">short description here</div>
-      <a href="https://example.com/project3"></a>
+      <img src="temp/Bend_Lines.jfif" alt="project 3">
+      <div class="overlay-title">Engineering Tips</div>
+      <div class="overlay-desc">Reference format and reusable notes</div>
+      <a href="articles/engineering_tips_standard.html"></a>
     </div>
 
     <div class="cell img-cell">
-      <img src="images/sheepbarn.jpg" alt="project 4">
-      <div class="overlay-title">project 4</div>
-      <div class="overlay-desc">short description here</div>
-      <a href="https://example.com/project4"></a>
+      <img src="temp/Trailer.jfif" alt="project 4">
+      <div class="overlay-title">Trailer Setup</div>
+      <div class="overlay-desc">Transport notes and setup checks</div>
+      <a href="articles/trailer_setup_notes.html"></a>
     </div>
 
     <div class="cell img-cell">
-      <img src="images/sheepbarn.jpg" alt="project 5">
-      <div class="overlay-title">project 5</div>
-      <div class="overlay-desc">short description here</div>
-      <a href="https://example.com/project5"></a>
+      <img src="temp/Outrigger.jfif" alt="project 5">
+      <div class="overlay-title">Outrigger Notes</div>
+      <div class="overlay-desc">Structure, stance, and load path</div>
+      <a href="articles/outrigger_notes.html"></a>
+    </div>
+
+    <div class="cell img-cell">
+      <img src="temp/Bricks.jfif" alt="project 6">
+      <div class="overlay-title">Brickwork Reference</div>
+      <div class="overlay-desc">Layout checks and alignment notes</div>
+      <a href="articles/brickwork_reference.html"></a>
     </div>
   </div>
 </body>

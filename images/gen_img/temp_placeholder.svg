@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 900" role="img" aria-labelledby="title desc">
+  <title id="title">Engineering Placeholder</title>
+  <desc id="desc">Black and white placeholder with red accents for future article images.</desc>
+  <rect width="1200" height="900" fill="#000000" />
+  <rect x="50" y="50" width="1100" height="800" fill="none" stroke="#2b2b2b" stroke-width="4" />
+  <line x1="50" y1="180" x2="1150" y2="180" stroke="#ff3b30" stroke-width="4" />
+  <line x1="180" y1="50" x2="180" y2="850" stroke="#1f1f1f" stroke-width="2" />
+  <line x1="320" y1="50" x2="320" y2="850" stroke="#1f1f1f" stroke-width="2" />
+  <line x1="50" y1="320" x2="1150" y2="320" stroke="#1f1f1f" stroke-width="2" />
+  <line x1="50" y1="470" x2="1150" y2="470" stroke="#1f1f1f" stroke-width="2" />
+  <line x1="50" y1="620" x2="1150" y2="620" stroke="#1f1f1f" stroke-width="2" />
+  <text x="95" y="145" fill="#ffffff" font-family="Consolas, monospace" font-size="42">TEMP PLACEHOLDER</text>
+  <text x="95" y="265" fill="#ff3b30" font-family="Consolas, monospace" font-size="28">ARTICLE IMAGE SLOT</text>
+  <text x="95" y="400" fill="#ffffff" font-family="Consolas, monospace" font-size="24">BLACK / WHITE / RED</text>
+  <text x="95" y="550" fill="#ffffff" font-family="Consolas, monospace" font-size="24">LIGHTWEIGHT STATIC ASSET</text>
+  <text x="95" y="700" fill="#ffffff" font-family="Consolas, monospace" font-size="24">REPLACE WHEN REAL IMAGE EXISTS</text>
+</svg>
