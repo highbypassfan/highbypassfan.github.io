@@ -115,6 +115,31 @@
     .type-toggle input:checked + span {
       color: var(--accent);
     }
+    .publish-toggle {
+      display: flex;
+      align-items: center;
+      gap: 0.65rem;
+      border: 1px solid var(--line);
+      background: #020202;
+      padding: 0.75rem 0.85rem;
+    }
+    .publish-toggle input {
+      width: 1rem;
+      height: 1rem;
+      margin: 0;
+      accent-color: var(--accent);
+    }
+    .publish-copy strong {
+      display: block;
+      font-weight: normal;
+    }
+    .publish-copy span {
+      display: block;
+      margin-top: 0.2rem;
+      color: var(--muted);
+      font-size: 0.95rem;
+      line-height: 1.45;
+    }
     .restore-banner {
       display: none;
       align-items: center;
@@ -385,7 +410,7 @@
       <h1>Static Post Editor</h1>
       <div class="actions">
         <button id="pickRepo" type="button" title="Choose the website repo folder">pick website folder</button>
-        <button id="selectPost" type="button" title="Search and load an existing article or project">select post</button>
+        <button id="selectPost" type="button" title="Search and load an existing post">select post</button>
         <button id="generate" type="button" title="Save the current post and rebuild index pages">save post</button>
       </div>
     </div>
@@ -396,10 +421,18 @@
 
         <div class="field">
           <label>Post Type</label>
-          <div class="type-toggle">
-            <label><input type="radio" name="postType" value="articles" checked /><span>article</span></label>
-            <label><input type="radio" name="postType" value="projects" /><span>project</span></label>
-          </div>
+          <div class="hint">All entries are now saved as posts.</div>
+        </div>
+
+        <div class="field">
+          <label for="published">Visibility</label>
+          <label class="publish-toggle" for="published">
+            <input id="published" type="checkbox" checked />
+            <div class="publish-copy">
+              <strong>Published on list page</strong>
+              <span>Turn this off to keep the post file editable without showing it on `posts.html`.</span>
+            </div>
+          </label>
         </div>
 
         <div class="row">
@@ -420,7 +453,7 @@
           </div>
           <div class="field" style="flex: 1 1 160px;">
             <label for="navSection">Nav Section</label>
-            <input id="navSection" type="text" value="articles" />
+            <input id="navSection" type="text" value="posts" />
           </div>
         </div>
 
@@ -445,8 +478,8 @@
         </div>
 
         <p class="hint">
-          The editor writes pages into `articles/` or `projects/`, copies images into `images/&lt;slug&gt;/`,
-          updates `data/content-index.json`, and rebuilds the matching index page.
+          The editor writes pages into `posts/`, copies images into `images/&lt;slug&gt;/`,
+          updates `data/content-index.json`, and rebuilds `posts.html`.
         </p>
       </section>
 

@@ -12,6 +12,7 @@
   const titleInput = document.getElementById("title");
   const slugInput = document.getElementById("slug");
   const dateInput = document.getElementById("date");
+  const publishedInput = document.getElementById("published");
   const summaryInput = document.getElementById("summary");
   const tagsInput = document.getElementById("tags");
   const navSectionInput = document.getElementById("navSection");
@@ -61,15 +62,9 @@
     queuePersistAndPreview();
   });
 
-  [dateInput, summaryInput, tagsInput, navSectionInput].forEach((element) => {
+  [dateInput, publishedInput, summaryInput, tagsInput, navSectionInput].forEach((element) => {
     element.addEventListener("input", queuePersistAndPreview);
-  });
-
-  document.querySelectorAll('input[name="postType"]').forEach((radio) => {
-    radio.addEventListener("change", () => {
-      navSectionInput.value = radio.value;
-      queuePersistAndPreview();
-    });
+    element.addEventListener("change", queuePersistAndPreview);
   });
 
   toolbarButtons.forEach((button) => {
@@ -224,21 +219,20 @@
         throw new Error("Pick the website folder first.");
       }
 
-      const type = document.querySelector('input[name="postType"]:checked').value;
       const title = titleInput.value.trim();
       const slug = slugify(slugInput.value.trim() || title);
       const date = dateInput.value;
+      const published = publishedInput.checked;
       const summary = summaryInput.value.trim();
       const tags = tagsInput.value.split(",").map((tag) => tag.trim()).filter(Boolean);
-      const navSection = navSectionInput.value.trim() || type;
+      const navSection = navSectionInput.value.trim() || "posts";
       const bodyHtml = normalizeBodyHtml(editor.innerHTML);
 
       if (!title || !slug || !date || !summary) {
         throw new Error("Title, slug, date, and summary are required.");
       }
 
-      const folderName = type === "articles" ? "articles" : "projects";
-      const pagePath = `${folderName}/${slug}.html`;
+      const pagePath = `posts/${slug}.html`;
       const imagesFolder = `images/${slug}`;
       const savedImages = await saveImages(imagesFolder, pendingImages);
       const existingHero = loadedPostRef && loadedPostRef.item.slug === slug ? loadedPostRef.item.image : null;
@@ -249,6 +243,7 @@
         slug,
         title,
         date,
+        published,
         summary,
         tags,
         image: heroImage,
@@ -260,20 +255,20 @@
       const contentIndex = contentIndexCache || await readJson("data/content-index.json");
 
       if (loadedPostRef) {
-        contentIndex[loadedPostRef.type] = (contentIndex[loadedPostRef.type] || []).filter((entry) => entry.slug !== loadedPostRef.item.slug);
+        contentIndex.posts = (contentIndex.posts || []).filter((entry) => entry.slug !== loadedPostRef.item.slug);
       }
 
-      contentIndex[type] = (contentIndex[type] || []).filter((entry) => entry.slug !== slug);
-      contentIndex[type].push(item);
-      contentIndex[type].sort((a, b) => new Date(b.date) - new Date(a.date));
+      contentIndex.posts = (contentIndex.posts || []).filter((entry) => entry.slug !== slug);
+      contentIndex.posts.push(item);
+      contentIndex.posts.sort((a, b) => new Date(b.date) - new Date(a.date));
       contentIndexCache = contentIndex;
 
       await writeTextFile("data/content-index.json", JSON.stringify(contentIndex, null, 2) + "\n");
-      await writeTextFile(pagePath, renderPostPage(type, item));
-      await writeTextFile("articles.html", renderIndexPage("articles", contentIndex.articles || []));
-      await writeTextFile("projects.html", renderIndexPage("projects", contentIndex.projects || []));
+      await writeTextFile(pagePath, renderPostPage(item));
+      await writeTextFile("posts.html", renderIndexPage(contentIndex.posts || []));
+      await writeTextFile("index.html", renderHomePage(contentIndex.posts || []));
 
-      loadedPostRef = { type, item };
+      loadedPostRef = { type: "posts", item };
       loadedPostLabel.textContent = `loaded: ${item.slug}`;
       pendingImages = [];
       existingImages = await loadExistingImages(item);
@@ -282,7 +277,10 @@
       renderImageList();
       renderPreview();
       const savedAt = new Date().toLocaleString();
-      setStatus(`Saved ${pagePath}\nSaved at ${savedAt}\nUpdated data/content-index.json\nUpdated articles.html and projects.html\nSaved ${savedImages.length} new image(s) in ${imagesFolder}/`);
+      const visibilityLine = published
+        ? "Published on posts.html"
+        : "Unpublished from posts.html";
+      setStatus(`Saved ${pagePath}\nSaved at ${savedAt}\n${visibilityLine}\nUpdated data/content-index.json\nUpdated posts.html and index.html\nSaved ${savedImages.length} new image(s) in ${imagesFolder}/`);
     } catch (error) {
       setStatus(error.message || String(error), true);
     }
@@ -449,17 +447,17 @@
     queuePersistAndPreview();
   }
 
-  async function loadPostIntoEditor(type, item) {
-    document.querySelector(`input[name="postType"][value="${type}"]`).checked = true;
+  async function loadPostIntoEditor(item) {
     titleInput.value = item.title;
     slugInput.value = item.slug;
     slugInput.dataset.touched = "true";
     dateInput.value = item.date;
+    publishedInput.checked = item.published !== false;
     summaryInput.value = item.summary;
     tagsInput.value = (item.tags || []).join(", ");
-    navSectionInput.value = item.navSection || type;
+    navSectionInput.value = item.navSection || "posts";
     editor.innerHTML = sanitizeEditorHtml(item.bodyHtml || "<p></p>");
-    loadedPostRef = { type, item };
+    loadedPostRef = { type: "posts", item };
     loadedPostLabel.textContent = `loaded: ${item.slug}`;
     pendingImages = [];
     existingImages = await loadExistingImages(item);
@@ -523,7 +521,8 @@
 
   async function readJson(path) {
     const file = await getFileHandle(path, false).then((handle) => handle.getFile());
-    return JSON.parse(await file.text());
+    const parsed = JSON.parse(await file.text());
+    return path === "data/content-index.json" ? normalizeContentIndex(parsed) : parsed;
   }
 
   async function writeTextFile(path, contents) {
@@ -552,13 +551,13 @@
   }
 
   function buildCurrentItem(strict) {
-    const type = getSelectedPostType();
     const title = titleInput.value.trim();
     const slug = slugify(slugInput.value.trim() || title);
     const date = dateInput.value;
+    const published = publishedInput.checked;
     const summary = summaryInput.value.trim();
     const tags = tagsInput.value.split(",").map((tag) => tag.trim()).filter(Boolean);
-    const navSection = navSectionInput.value.trim() || type;
+    const navSection = navSectionInput.value.trim() || "posts";
     const fallbackImage = loadedPostRef ? loadedPostRef.item.image : "temp/Bend_Lines.jfif";
     const bodyHtml = strict ? normalizeBodyHtml(editor.innerHTML) : safeBodyHtml();
 
@@ -570,10 +569,11 @@
       slug,
       title: title || "Untitled Post",
       date: date || new Date().toISOString().slice(0, 10),
+      published,
       summary: summary || "Preview summary.",
       tags,
       image: fallbackImage,
-      path: `${type}/${slug || "untitled_post"}.html`,
+      path: `posts/${slug || "untitled_post"}.html`,
       navSection,
       bodyHtml
     };
@@ -582,10 +582,6 @@
   function safeBodyHtml() {
     const cleaned = sanitizeEditorHtml(editor.innerHTML || "<p></p>");
     return cleaned.trim() || "<p></p>";
-  }
-
-  function getSelectedPostType() {
-    return document.querySelector('input[name="postType"]:checked').value;
   }
 
   function renderPreview() {
@@ -612,7 +608,7 @@
     }
 
     previewFrame.dataset.ready = "false";
-    previewFrame.srcdoc = renderPostPage(getSelectedPostType(), item);
+    previewFrame.srcdoc = renderPostPage(item);
   }
 
   function queuePersistAndPreview() {
@@ -637,16 +633,15 @@
 
   function collectDraftState() {
     return {
-      type: getSelectedPostType(),
       title: titleInput.value,
       slug: slugInput.value,
       date: dateInput.value,
+      published: publishedInput.checked,
       summary: summaryInput.value,
       tags: tagsInput.value,
       navSection: navSectionInput.value,
       bodyHtml: sanitizeEditorHtml(editor.innerHTML),
       heroImagePath,
-      loadedPostType: loadedPostRef ? loadedPostRef.type : "",
       loadedPostSlug: loadedPostRef ? loadedPostRef.item.slug : ""
     };
   }
@@ -661,23 +656,23 @@
       return;
     }
 
-    document.querySelector(`input[name="postType"][value="${draft.type || "articles"}"]`).checked = true;
     titleInput.value = draft.title || "";
     slugInput.value = draft.slug || "";
     slugInput.dataset.touched = draft.slug ? "true" : "";
     dateInput.value = draft.date || new Date().toISOString().slice(0, 10);
+    publishedInput.checked = draft.published !== false;
     summaryInput.value = draft.summary || "";
     tagsInput.value = draft.tags || "";
-    navSectionInput.value = draft.navSection || draft.type || "articles";
+    navSectionInput.value = draft.navSection || "posts";
     editor.innerHTML = sanitizeEditorHtml(draft.bodyHtml || "<p></p>");
     heroImagePath = draft.heroImagePath || "";
     pendingImages = [];
 
-    if (repoHandle && draft.loadedPostType && draft.loadedPostSlug) {
+    if (repoHandle && draft.loadedPostSlug) {
       contentIndexCache = contentIndexCache || await readJson("data/content-index.json");
-      const match = (contentIndexCache[draft.loadedPostType] || []).find((item) => item.slug === draft.loadedPostSlug);
+      const match = (contentIndexCache.posts || []).find((item) => item.slug === draft.loadedPostSlug);
       if (match) {
-        loadedPostRef = { type: draft.loadedPostType, item: match };
+        loadedPostRef = { type: "posts", item: match };
         existingImages = await loadExistingImages(match);
         loadedPostLabel.textContent = `loaded: ${match.slug}`;
       }
@@ -725,16 +720,15 @@
 
   function buildSearchResults(query) {
     const normalized = query.trim().toLowerCase();
-    const allPosts = [
-      ...(contentIndexCache.articles || []).map((item) => ({ type: "articles", item })),
-      ...(contentIndexCache.projects || []).map((item) => ({ type: "projects", item }))
-    ].sort((a, b) => new Date(b.item.date) - new Date(a.item.date));
+    const allPosts = (contentIndexCache.posts || [])
+      .map((item) => ({ item }))
+      .sort((a, b) => new Date(b.item.date) - new Date(a.item.date));
 
-    return allPosts.filter(({ type, item }) => {
+    return allPosts.filter(({ item }) => {
       if (!normalized) {
         return true;
       }
-      return `${type} ${item.title} ${item.slug} ${item.date}`.toLowerCase().includes(normalized);
+      return `${item.title} ${item.slug} ${item.date}`.toLowerCase().includes(normalized);
     });
   }
 
@@ -749,14 +743,15 @@
       return;
     }
 
-    results.forEach(({ type, item }) => {
+    results.forEach(({ item }) => {
       const button = document.createElement("button");
       button.type = "button";
       button.className = "modal-item";
       button.title = `Load ${item.title}`;
-      button.innerHTML = `<strong>${escapeHtml(item.title)}</strong><small>${escapeHtml(type === "articles" ? "article" : "project")} | ${escapeHtml(item.slug)} | ${escapeHtml(item.date)}</small>`;
+      const visibility = item.published === false ? "unpublished" : "published";
+      button.innerHTML = `<strong>${escapeHtml(item.title)}</strong><small>post | ${escapeHtml(item.slug)} | ${escapeHtml(item.date)} | ${escapeHtml(visibility)}</small>`;
       button.addEventListener("click", async () => {
-        await loadPostIntoEditor(type, item);
+        await loadPostIntoEditor(item);
         closePostPicker();
         setStatus(`Loaded ${item.path} for editing.`);
       });
@@ -843,19 +838,17 @@
     return editor.querySelector("p") || editor;
   }
 
-  function renderIndexPage(type, items) {
-    const isArticle = type === "articles";
-    const title = isArticle ? "Articles" : "Projects";
-    const activeArticles = isArticle ? ' class="active"' : "";
-    const activeProjects = !isArticle ? ' class="active"' : "";
-    const listId = isArticle ? "articleList" : "projectList";
-    const cardClass = isArticle ? "article-card" : "project-card";
-    const listClass = isArticle ? "article-list" : "project-list";
-    const dateClass = isArticle ? "article-date" : "project-date";
-    const metaClass = isArticle ? "article-meta" : "project-meta";
-    const openLabel = isArticle ? "open article" : "open project";
+  function renderIndexPage(items) {
+    const visibleItems = items.filter((item) => item.published !== false);
+    const title = "Posts";
+    const listId = "postList";
+    const cardClass = "post-card";
+    const listClass = "post-list";
+    const dateClass = "post-date";
+    const metaClass = "post-meta";
+    const openLabel = "open post";
 
-    const cards = items.map((item) => {
+    const cards = visibleItems.map((item) => {
       const meta = (item.tags || []).map((tag) => `<span>${escapeHtml(tag)}</span>`).join("");
       return `      <a class="${cardClass}" href="${escapeAttribute(item.path)}" data-date="${escapeAttribute(item.date)}">
         <img src="${escapeAttribute(item.image)}" alt="${escapeAttribute(item.title)}" />
@@ -870,6 +863,7 @@
         </div>
       </a>`;
     }).join("\n\n");
+    const emptyState = cards ? "" : "      <p class=\"hint\">No posts published yet.</p>";
 
     return `<!DOCTYPE html>
 <html lang="en">
@@ -938,6 +932,7 @@
     .${cardClass}:hover h2,
     .${cardClass}:hover .read-link { color: var(--accent); }
     .read-link { display: inline-block; margin-top: 0.25rem; }
+    .hint { color: var(--muted); line-height: 1.6; }
     @media (max-width: 700px) {
       .${cardClass} { grid-template-columns: 1fr; }
     }
@@ -946,19 +941,17 @@
 <body>
   <div class="top-nav">
     <a href="index.html">home</a>
-    <a href="articles.html"${activeArticles}>articles</a>
-    <a href="projects.html"${activeProjects}>projects</a>
+    <a href="posts.html" class="active">posts</a>
     <a href="#">datastream</a>
-    <a href="articles/engineering_tips_standard.html">engineering tips</a>
   </div>
 
   <main class="page">
     <div class="list-header">
-      <button class="sort-toggle" id="sortToggle" type="button" aria-label="Toggle ${isArticle ? "article" : "project"} order">^</button>
+      <button class="sort-toggle" id="sortToggle" type="button" aria-label="Toggle post order">^</button>
     </div>
 
     <section class="${listClass}" id="${listId}">
-${cards}
+${cards || emptyState}
     </section>
   </main>
 
@@ -990,11 +983,7 @@ ${cards}
 `;
   }
 
-  function renderPostPage(type, item) {
-    const isArticle = type === "articles";
-    const activeArticles = isArticle ? ' class="active"' : "";
-    const activeProjects = !isArticle ? ' class="active"' : "";
-    const engineeringActive = item.navSection === "engineering tips" ? ' class="active"' : "";
+  function renderPostPage(item) {
     const metaLine = [item.date].concat(item.tags || []).join(" | ");
     const heroPath = item.image.startsWith("../") ? item.image : `../${item.image}`;
 
@@ -1048,10 +1037,8 @@ ${cards}
 <body>
   <div class="top-nav">
     <a href="../index.html">home</a>
-    <a href="../articles.html"${activeArticles}>articles</a>
-    <a href="../projects.html"${activeProjects}>projects</a>
+    <a href="../posts.html" class="active">posts</a>
     <a href="#">datastream</a>
-    <a href="../articles/engineering_tips_standard.html"${engineeringActive}>engineering tips</a>
   </div>
   <main class="page">
     <div class="eyebrow" id="previewMeta">${escapeHtml(metaLine)}</div>
@@ -1333,6 +1320,247 @@ ${cards}
     }
 
     return `https://${trimmed}`;
+  }
+
+  function renderHomePage(items) {
+    const visibleItems = items
+      .filter((item) => item.published !== false)
+      .sort((a, b) => new Date(b.date) - new Date(a.date));
+
+    const cards = visibleItems.map((item) => `    <div class="cell img-cell">
+      <img src="${escapeAttribute(item.image)}" alt="${escapeAttribute(item.title)}">
+      <div class="overlay-title">${escapeHtml(item.title)}</div>
+      <div class="overlay-desc">${escapeHtml(item.summary)}</div>
+      <a href="${escapeAttribute(item.path)}" aria-label="${escapeAttribute(item.title)}"></a>
+    </div>`).join("\n\n");
+
+    const emptyState = `  <section class="empty-state">
+    <div class="empty-card">
+      <h2>No Posts Live Right Now</h2>
+      <p>The published post archive has been cleared for now.</p>
+      <p>You can still use the editor to make new ones, and they will show up on <a href="posts.html">the posts page</a> when you publish them.</p>
+    </div>
+  </section>`;
+
+    return `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta name="viewport"
+        content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <style>
+    body {
+      margin: 0;
+      font-family: Consolas, monospace;
+      background: #000;
+      color: #fff;
+      overflow-x: hidden;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    .top-nav {
+      white-space: nowrap;
+      overflow-x: auto;
+      overflow-y: hidden;
+      display: flex;
+      gap: 1rem;
+      padding: 1rem;
+      border-bottom: 1px solid #222;
+    }
+
+    .top-nav a {
+      text-decoration: none;
+      color: #fff;
+      font-size: 1rem;
+      flex: 0 0 auto;
+    }
+
+    .top-nav a:hover,
+    .top-nav a.active {
+      color: #ff3b30;
+    }
+
+    .intro {
+      padding: 1.75rem 1rem 1.25rem;
+      border-bottom: 1px solid #222;
+    }
+
+    .intro-inner {
+      max-width: 1100px;
+      margin: 0 auto;
+    }
+
+    .intro p {
+      margin: 0 0 1rem 0;
+      font-size: clamp(1rem, 0.9rem + 0.55vw, 1.25rem);
+      line-height: 1.45;
+      max-width: 70ch;
+      text-align: left;
+      margin-left: auto;
+      margin-right: auto;
+    }
+
+    .construction-notice {
+      color: #ff3b30;
+      font-weight: bold;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 0;
+      width: 100vw;
+    }
+
+    .cell {
+      position: relative;
+      overflow: hidden;
+    }
+
+    .img-cell {
+      aspect-ratio: 4 / 3;
+    }
+
+    .img-cell img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
+      transition: filter 0.3s ease;
+    }
+
+    .overlay-title,
+    .overlay-desc {
+      position: absolute;
+      z-index: 1;
+      text-shadow: 0 1px 3px rgba(0, 0, 0, 0.85);
+      pointer-events: none;
+    }
+
+    .overlay-title {
+      top: 0.5rem;
+      left: 0.5rem;
+      right: 0.5rem;
+      font-size: 1.5rem;
+      font-weight: normal;
+    }
+
+    .overlay-desc {
+      bottom: 0.5rem;
+      right: 0.5rem;
+      left: 0.5rem;
+      text-align: right;
+      font-size: 1rem;
+      font-weight: normal;
+    }
+
+    .img-cell:hover img {
+      filter: brightness(60%);
+    }
+
+    .img-cell a {
+      position: absolute;
+      inset: 0;
+      z-index: 2;
+    }
+
+    .empty-state {
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: 2rem 1rem 4rem;
+    }
+
+    .empty-card {
+      border: 1px solid #222;
+      background: #050505;
+      padding: 1.5rem;
+      max-width: 720px;
+    }
+
+    .empty-card h2 {
+      margin: 0 0 0.75rem 0;
+      font-size: 1.5rem;
+      font-weight: normal;
+      color: #ff3b30;
+    }
+
+    .empty-card p {
+      margin: 0 0 1rem 0;
+      line-height: 1.6;
+      color: #b8b8b8;
+    }
+
+    .empty-card a {
+      text-decoration: none;
+      color: #fff;
+      border-bottom: 1px solid #ff3b30;
+    }
+
+    .empty-card a:hover {
+      color: #ff3b30;
+    }
+
+    @media (max-width: 900px) {
+      .grid {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="top-nav">
+    <a href="index.html" class="active">home</a>
+    <a href="posts.html">posts</a>
+    <a href="#">datastream</a>
+  </div>
+
+  <section class="intro">
+    <div class="intro-inner">
+      <p class="construction-notice">UNDER CONSTRUCTION: Currently populated by test articles, no content here yet!</p>
+      <p>Website of Isaiah Stewman. I do Mechanical Engineering, Winemaking, Electrician/handyman work, Car Repair, and various other occasionally useful things. My goal is to be as useful and effective as I know I am capable of (on the order of 1000x my current output).</p>
+      <p>I have made this website because I aggressively file away links and notes on my personal services and believe that some other people may find them useful. Also to increase my luck cross section (link to thread).</p>
+      <p>Mankind needs more useful people who live up to their God-given talents.</p>
+    </div>
+  </section>
+
+${cards ? `  <div class="grid">
+${cards}
+  </div>` : emptyState}
+</body>
+</html>
+`;
+  }
+
+  function normalizeContentIndex(contentIndex) {
+    const merged = [
+      ...(contentIndex.posts || []),
+      ...(contentIndex.articles || []),
+      ...(contentIndex.projects || [])
+    ].map((item) => ({
+      ...item,
+      published: item.published !== false,
+      path: normalizePostPath(item.path, item.slug),
+      navSection: item.navSection === "engineering tips" ? "engineering tips" : "posts"
+    }));
+
+    const seen = new Set();
+    const posts = merged.filter((item) => {
+      const key = item.slug || item.path;
+      if (seen.has(key)) {
+        return false;
+      }
+      seen.add(key);
+      return true;
+    }).sort((a, b) => new Date(b.date) - new Date(a.date));
+
+    return { posts };
+  }
+
+  function normalizePostPath(path, slug) {
+    const fileName = path ? path.split("/").pop() : `${slug || "untitled_post"}.html`;
+    return `posts/${fileName}`;
   }
 
   function setStatus(message, isError) {

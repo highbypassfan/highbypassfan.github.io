@@ -55,6 +55,8 @@
       line-height: 1.45;
       max-width: 70ch;
       text-align: left;
+      margin-left: auto;
+      margin-right: auto;
     }
 
     .construction-notice {
@@ -62,7 +64,6 @@
       font-weight: bold;
     }
 
-    /* grid layout */
     .grid {
       display: grid;
       grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -75,14 +76,10 @@
       overflow: hidden;
     }
 
-    .text-cell {
-      display: none;
+    .img-cell {
+      aspect-ratio: 4 / 3;
     }
-    
-    .img-cell {  
-      aspect-ratio: 4 / 3;       
-    }
-    
+
     .img-cell img {
       width: 100%;
       height: 100%;
@@ -91,27 +88,29 @@
       transition: filter 0.3s ease;
     }
 
-    .overlay-title {
-      position: absolute;
-      font-size: 1.5rem;
-      font-weight: normal;
-    }
-    
+    .overlay-title,
     .overlay-desc {
       position: absolute;
-      font-size: 1rem;
-      font-weight: normal;
+      z-index: 1;
+      text-shadow: 0 1px 3px rgba(0, 0, 0, 0.85);
+      pointer-events: none;
     }
 
     .overlay-title {
       top: 0.5rem;
       left: 0.5rem;
+      right: 0.5rem;
+      font-size: 1.5rem;
+      font-weight: normal;
     }
 
     .overlay-desc {
       bottom: 0.5rem;
       right: 0.5rem;
+      left: 0.5rem;
       text-align: right;
+      font-size: 1rem;
+      font-weight: normal;
     }
 
     .img-cell:hover img {
@@ -121,14 +120,50 @@
     .img-cell a {
       position: absolute;
       inset: 0;
-      z-index: 10;
+      z-index: 2;
+    }
+
+    .empty-state {
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: 2rem 1rem 4rem;
+    }
+
+    .empty-card {
+      border: 1px solid #222;
+      background: #050505;
+      padding: 1.5rem;
+      max-width: 720px;
+    }
+
+    .empty-card h2 {
+      margin: 0 0 0.75rem 0;
+      font-size: 1.5rem;
+      font-weight: normal;
+      color: #ff3b30;
+    }
+
+    .empty-card p {
+      margin: 0 0 1rem 0;
+      line-height: 1.6;
+      color: #b8b8b8;
+    }
+
+    .empty-card a {
+      text-decoration: none;
+      color: #fff;
+      border-bottom: 1px solid #ff3b30;
+    }
+
+    .empty-card a:hover {
+      color: #ff3b30;
     }
     /* this website is a mixture of vibe and normal coded, I got the bones with AI and then used that as a jumping off point to learn the basics (i.e. when I have to change things I ask how they work and then do manually) */
     
     /* so it doesn't freak out on mobile (an inferior way to interact with the web frankly!) */
      @media (max-width: 900px) {
       .grid {
-      grid-template-columns: 1fr;
+        grid-template-columns: 1fr;
       }
     }
   </style>
@@ -136,63 +171,25 @@
 <body>
   <div class="top-nav">
     <a href="index.html" class="active">home</a>
-    <a href="articles.html">articles</a>
-    <a href="projects.html">projects</a>
+    <a href="posts.html">posts</a>
     <a href="#">datastream</a>
-    <a href="articles/engineering_tips_standard.html">engineering tips</a>
   </div>
 
   <section class="intro">
     <div class="intro-inner">
-      <p class="construction-notice">UNDER CONSTRUCTION: Currently populated by test articles, no content here yet!</p>
-      <p>Website of Isaiah Stewman. I do Mechanical Engineering, Winemaking, Electrician/handyman work, Car Repair, and various other occasionally useful things. My goal is to be as useful and effective as I know I am capable of (on the order of 1000x my current output).</p>
+      <p class="construction-notice">UNDER CONSTRUCTION</p>
+      <p>Hi, I'm Isaiah, @acheronix on X, I mainly do Mechanical Engineering. I've also worked as an electrician and grew up on a vineyard. My goal is to be as useful and effective as I know I am capable of.</p>
       <!-- and also to get married but I have to find the right person :3 -->
-      <p>I have made this website because I aggressively file away links and notes on my personal services and believe that some other people may find them useful. Also to increase my luck cross section (link to thread).</p>
-      <p>Mankind needs more useful people who live up to their God-given talents.</p>
+      <p>The purpose of this website is mainly to force myself to document my projects better. I also have saved a lot of useful engineering information and tips.</p>
     </div>
   </section>
 
   <div class="grid">
     <div class="cell img-cell">
-      <img src="images/toolbox/toolbox_mounted.webp" alt="project 1">
-      <div class="overlay-title">Toolbox Mount</div>
-      <div class="overlay-desc">Notes from the process & some engineering tips</div>
-      <a href="articles/toolbox_mount.html"></a>
-    </div>
-
-    <div class="cell img-cell">
-      <img src="images/sheepbarn.jpg" alt="project 2">
-      <div class="overlay-title">Projects</div>
-      <div class="overlay-desc">Build log index & field work notes</div>
-      <a href="projects.html"></a>
-    </div>
-
-    <div class="cell img-cell">
-      <img src="temp/Bend_Lines.jfif" alt="project 3">
-      <div class="overlay-title">Engineering Tips</div>
-      <div class="overlay-desc">Reference format and reusable notes</div>
-      <a href="articles/engineering_tips_standard.html"></a>
-    </div>
-
-    <div class="cell img-cell">
-      <img src="temp/Trailer.jfif" alt="project 4">
-      <div class="overlay-title">Trailer Setup</div>
-      <div class="overlay-desc">Transport notes and setup checks</div>
-      <a href="articles/trailer_setup_notes.html"></a>
-    </div>
-
-    <div class="cell img-cell">
-      <img src="temp/Outrigger.jfif" alt="project 5">
-      <div class="overlay-title">Outrigger Notes</div>
-      <div class="overlay-desc">Structure, stance, and load path</div>
-      <a href="articles/outrigger_notes.html"></a>
-    </div>
-
-    <div class="cell img-cell">
-      <img src="temp/Bricks.jfif" alt="project 6">
-      <div class="overlay-title">Brickwork Reference</div>
-      <div class="overlay-desc">Layout checks and alignment notes</div>
-      <a href="articles/brickwork_reference.html"></a>
+      <img src="images/test_post_1/hawkeye.jpg" alt="Test Post 1">
+      <div class="overlay-title">Test Post 1</div>
+      <div class="overlay-desc">Test</div>
+      <a href="posts/test_post_1.html" aria-label="Test Post 1"></a>
     </div>
   </div>
 </body>
