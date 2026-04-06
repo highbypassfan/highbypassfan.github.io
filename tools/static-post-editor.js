@@ -169,7 +169,7 @@
         previewFrame.dataset.ready = "true";
         previewFrame.contentWindow.scrollTo(0, previewScrollY);
       }
-    } catch (error) {
+    } catch {
     }
   });
 
@@ -268,7 +268,7 @@
       await writeTextFile("posts.html", renderIndexPage(contentIndex.posts || []));
       await writeTextFile("index.html", renderHomePage(contentIndex.posts || []));
 
-      loadedPostRef = { type: "posts", item };
+      loadedPostRef = { item };
       loadedPostLabel.textContent = `loaded: ${item.slug}`;
       pendingImages = [];
       existingImages = await loadExistingImages(item);
@@ -457,7 +457,7 @@
     tagsInput.value = (item.tags || []).join(", ");
     navSectionInput.value = item.navSection || "posts";
     editor.innerHTML = sanitizeEditorHtml(item.bodyHtml || "<p></p>");
-    loadedPostRef = { type: "posts", item };
+    loadedPostRef = { item };
     loadedPostLabel.textContent = `loaded: ${item.slug}`;
     pendingImages = [];
     existingImages = await loadExistingImages(item);
@@ -495,7 +495,7 @@
       }
       items.sort((a, b) => a.name.localeCompare(b.name));
       return items;
-    } catch (error) {
+    } catch {
       return [];
     }
   }
@@ -550,7 +550,7 @@
     return current;
   }
 
-  function buildCurrentItem(strict) {
+  function buildCurrentItem() {
     const title = titleInput.value.trim();
     const slug = slugify(slugInput.value.trim() || title);
     const date = dateInput.value;
@@ -559,11 +559,7 @@
     const tags = tagsInput.value.split(",").map((tag) => tag.trim()).filter(Boolean);
     const navSection = navSectionInput.value.trim() || "posts";
     const fallbackImage = loadedPostRef ? loadedPostRef.item.image : "temp/Bend_Lines.jfif";
-    const bodyHtml = strict ? normalizeBodyHtml(editor.innerHTML) : safeBodyHtml();
-
-    if (strict && (!title || !slug || !date || !summary)) {
-      throw new Error("Title, slug, date, and summary are required.");
-    }
+    const bodyHtml = safeBodyHtml();
 
     return {
       slug,
@@ -590,9 +586,9 @@
     }
     try {
       previewScrollY = previewFrame.contentWindow ? previewFrame.contentWindow.scrollY : previewScrollY;
-    } catch (error) {
+    } catch {
     }
-    const item = buildCurrentItem(false);
+    const item = buildCurrentItem();
     const resolvedHero = resolveHeroImagePath(item.slug);
     if (resolvedHero) {
       item.image = resolvedHero;
@@ -602,7 +598,7 @@
       updatePreviewDocument(previewDocument, item);
       try {
         previewFrame.contentWindow.scrollTo(0, previewScrollY);
-      } catch (error) {
+      } catch {
       }
       return;
     }
@@ -672,7 +668,7 @@
       contentIndexCache = contentIndexCache || await readJson("data/content-index.json");
       const match = (contentIndexCache.posts || []).find((item) => item.slug === draft.loadedPostSlug);
       if (match) {
-        loadedPostRef = { type: "posts", item: match };
+        loadedPostRef = { item: match };
         existingImages = await loadExistingImages(match);
         loadedPostLabel.textContent = `loaded: ${match.slug}`;
       }
@@ -700,7 +696,7 @@
     }
     try {
       return JSON.parse(raw);
-    } catch (error) {
+    } catch {
       return null;
     }
   }
@@ -846,8 +842,6 @@
     const listClass = "post-list";
     const dateClass = "post-date";
     const metaClass = "post-meta";
-    const openLabel = "open post";
-
     const cards = visibleItems.map((item) => {
       const meta = (item.tags || []).map((tag) => `<span>${escapeHtml(tag)}</span>`).join("");
       return `      <a class="${cardClass}" href="${escapeAttribute(item.path)}" data-date="${escapeAttribute(item.date)}">
@@ -859,7 +853,6 @@
           <div class="${metaClass}">
             ${meta}
           </div>
-          <span class="read-link">${openLabel}</span>
         </div>
       </a>`;
     }).join("\n\n");
@@ -870,7 +863,7 @@
 <head>
   <meta name="viewport"
         content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-  <title>${title} | Isaiah Stewman</title>
+  <title>${title}</title>
   <style>
     :root {
       --bg: #000;
@@ -929,9 +922,7 @@
     .${cardClass} h2 { margin: 0 0 0.5rem 0; font-size: 1.4rem; font-weight: normal; }
     .${cardClass} p { margin: 0 0 0.75rem 0; color: var(--muted); line-height: 1.5; }
     .${metaClass} { display: flex; flex-wrap: wrap; gap: 1rem; color: var(--muted); font-size: 0.95rem; }
-    .${cardClass}:hover h2,
-    .${cardClass}:hover .read-link { color: var(--accent); }
-    .read-link { display: inline-block; margin-top: 0.25rem; }
+    .${cardClass}:hover h2 { color: var(--accent); }
     .hint { color: var(--muted); line-height: 1.6; }
     @media (max-width: 700px) {
       .${cardClass} { grid-template-columns: 1fr; }
@@ -992,7 +983,7 @@ ${cards || emptyState}
 <head>
   <meta name="viewport"
         content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-  <title>${escapeHtml(item.title)} | Isaiah Stewman</title>
+  <title>${escapeHtml(item.title)}</title>
   <style>
     :root { --bg: #000; --fg: #fff; --line: #252525; --accent: #ff3b30; --muted: #b8b8b8; }
     * { box-sizing: border-box; }
@@ -1058,7 +1049,7 @@ ${cards || emptyState}
     const metaLine = [item.date].concat(item.tags || []).join(" | ");
     const heroPath = item.image.startsWith("../") ? item.image : `../${item.image}`;
 
-    previewDocument.title = `${item.title} | Isaiah Stewman`;
+    previewDocument.title = `${item.title}`;
     previewDocument.getElementById("previewMeta").textContent = metaLine;
     previewDocument.getElementById("previewTitle").textContent = item.title;
     previewDocument.getElementById("previewDeck").textContent = item.summary;
@@ -1214,7 +1205,7 @@ ${cards || emptyState}
       saveLastRepoName(savedHandle.name);
       updateRepoButtonLabel(savedHandle.name);
       setStatus("Reconnected to the last website folder automatically.");
-    } catch (error) {
+    } catch {
       setStatus("Saved website folder could not be reopened automatically. Click pick website folder to reconnect.");
     }
   }
@@ -1519,7 +1510,7 @@ ${cards || emptyState}
   <section class="intro">
     <div class="intro-inner">
       <p class="construction-notice">UNDER CONSTRUCTION: Currently populated by test articles, no content here yet!</p>
-      <p>Website of Isaiah Stewman. I do Mechanical Engineering, Winemaking, Electrician/handyman work, Car Repair, and various other occasionally useful things. My goal is to be as useful and effective as I know I am capable of (on the order of 1000x my current output).</p>
+      <p>Website of Isaiah. I do Mechanical Engineering, Winemaking, Electrician/handyman work, Car Repair, and various other occasionally useful things. My goal is to be as useful and effective as I know I am capable of (on the order of 1000x my current output).</p>
       <p>I have made this website because I aggressively file away links and notes on my personal services and believe that some other people may find them useful. Also to increase my luck cross section (link to thread).</p>
       <p>Mankind needs more useful people who live up to their God-given talents.</p>
     </div>

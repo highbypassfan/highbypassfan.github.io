@@ -1,6 +1,20 @@
 {
   "posts": [
     {
+      "slug": "engineering_tips",
+      "title": "Engineering Tips",
+      "date": "2026-04-06",
+      "published": true,
+      "summary": "Advice for people interested in solving problems. Biased towards hardware.",
+      "tags": [
+        "Advice"
+      ],
+      "image": "images/engineering_tips/self_portrait.png",
+      "path": "posts/engineering_tips.html",
+      "navSection": "posts",
+      "bodyHtml": "<p>todo</p>"
+    },
+    {
       "slug": "test_post_1",
       "title": "Test Post 1",
       "date": "2026-04-04",
