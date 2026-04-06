@@ -1,41 +1,11 @@
 <!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta name="viewport"
-        content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+<html lang="en"><head>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <link rel="stylesheet" href="assets/site-shell.css">
+  <script defer src="assets/site-shell.js"></script>
   <style>
     body {
-      margin: 0;
-      font-family: Consolas, monospace;
-      background: #000;
-      color: #fff;
       overflow-x: hidden;
-    }
-
-    * {
-      box-sizing: border-box;
-    }
-
-    .top-nav {
-      white-space: nowrap;
-      overflow-x: auto;
-      overflow-y: hidden;
-      display: flex;
-      gap: 1rem;
-      padding: 1rem;
-      border-bottom: 1px solid #222;
-    }
-
-    .top-nav a {
-      text-decoration: none;
-      color: #fff;
-      font-size: 1rem;
-      flex: 0 0 auto;
-    }
-
-    .top-nav a:hover,
-    .top-nav a.active {
-      color: #ff3b30;
     }
 
     .intro {
@@ -56,6 +26,26 @@
       text-align: left;
       margin-left: auto;
       margin-right: auto;
+    }
+
+    .intro-list {
+      max-width: 70ch;
+      margin: 0 auto;
+      padding-left: 1.35rem;
+      font-size: clamp(1rem, 0.9rem + 0.55vw, 1.25rem);
+      line-height: 1.35;
+    }
+
+    .intro-list li + li {
+      margin-top: 0.35rem;
+    }
+
+    .intro a {
+      color: #ff3b30;
+    }
+
+    .intro a:hover {
+      color: #ff6b63;
     }
 
     .construction-notice {
@@ -157,8 +147,10 @@
     .empty-card a:hover {
       color: #ff3b30;
     }
-
-    @media (max-width: 900px) {
+    /* this website is a mixture of vibe and normal coded, I got the bones with AI and then used that as a jumping off point to learn the basics (i.e. when I have to change things I ask how they work and then do manually) */
+    
+    /* so it doesn't freak out on mobile (an inferior way to interact with the web frankly!) */
+     @media (max-width: 900px) {
       .grid {
         grid-template-columns: 1fr;
       }
@@ -166,23 +158,26 @@
   </style>
 </head>
 <body>
-  <div class="top-nav">
-    <a href="index.html" class="active">home</a>
-    <a href="posts.html">posts</a>
-    <a href="#">datastream</a>
-  </div>
+  <div data-site-nav data-nav-prefix="" data-nav-section="home"></div>
 
   <section class="intro">
     <div class="intro-inner">
-      <p class="construction-notice">UNDER CONSTRUCTION: Currently populated by test articles, no content here yet!</p>
-      <p>Website of Isaiah Stewman. I do Mechanical Engineering, Winemaking, Electrician/handyman work, Car Repair, and various other occasionally useful things. My goal is to be as useful and effective as I know I am capable of (on the order of 1000x my current output).</p>
-      <p>I have made this website because I aggressively file away links and notes on my personal services and believe that some other people may find them useful. Also to increase my luck cross section (link to thread).</p>
-      <p>Mankind needs more useful people who live up to their God-given talents.</p>
+      <p class="construction-notice">UNDER CONSTRUCTION</p>
+      <p>Hi, I'm Isaiah, <a href="https://x.com/acheronix">@acheronix</a> on X, I mainly do Mechanical Engineering. I've also worked as an electrician and grew up on a vineyard. My goal is to be as useful and effective as I know I am capable of.</p>
+      <!-- and also to get married but I have to find the right person :3 -->
+      <p>The purpose of this website is mainly to force myself to document my projects better. I also have saved a lot of useful engineering information and tips.</p>
+      <p>Problems I'm interested in:</p>
+      <ul class="intro-list">
+        <li>Automated low volume manufacturing and assembly</li>
+        <li>Robotic brush control for wildfires and invasive plant growth</li>
+        <li>Orbital construction, colony logistics, spacesuits, powered exoskeletons</li>
+        <li>Airbag crash suits (vehicle coolness is constrained by safety, no hoverbikes until then)</li>
+        <li>General purpose household robotics, construction robotics</li>
+      </ul>
     </div>
   </section>
 
-  <div class="grid">
-    <div class="cell img-cell">
+  <div class="grid">    <div class="cell img-cell">
       <img src="images/engineering_tips/self_portrait.png" alt="Engineering Tips">
       <div class="overlay-title">Engineering Tips</div>
       <div class="overlay-desc">Advice for people interested in solving problems. Biased towards hardware.</div>
@@ -194,7 +189,7 @@
       <div class="overlay-title">Test Post 1</div>
       <div class="overlay-desc">Test</div>
       <a href="posts/test_post_1.html" aria-label="Test Post 1"></a>
-    </div>
-  </div>
-</body>
-</html>
+    </div></div>
+
+
+</body></html>
