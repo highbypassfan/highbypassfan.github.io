@@ -1097,7 +1097,12 @@ ${cards || emptyState}
   }
 
   function getNavSection(item) {
-    return item && item.navSection === "engineering tips" ? "engineering-tips" : "posts";
+    if (!item) {
+      return "posts";
+    }
+    return item.navSection === "engineering tips" || item.slug === "engineering_tips"
+      ? "engineering-tips"
+      : "posts";
   }
 
   async function resolvePreviewTemplatePath(item) {
@@ -1472,7 +1477,9 @@ ${cards || emptyState}
       ...item,
       published: item.published !== false,
       path: normalizePostPath(item.path, item.slug),
-      navSection: item.navSection === "engineering tips" ? "engineering tips" : "posts"
+      navSection: item.navSection === "engineering tips" || item.slug === "engineering_tips"
+        ? "engineering tips"
+        : "posts"
     }));
 
     const seen = new Set();
