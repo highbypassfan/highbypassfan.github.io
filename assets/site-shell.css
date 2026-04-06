@@ -1,0 +1,42 @@
+:root {
+  --bg: #000;
+  --fg: #fff;
+  --line: #252525;
+  --accent: #ff3b30;
+  --muted: #b8b8b8;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: Consolas, monospace;
+  background: var(--bg);
+  color: var(--fg);
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+.top-nav {
+  white-space: nowrap;
+  overflow-x: auto;
+  overflow-y: hidden;
+  display: flex;
+  gap: 1rem;
+  padding: 1rem;
+  border-bottom: 1px solid var(--line);
+}
+
+.top-nav a {
+  flex: 0 0 auto;
+}
+
+.top-nav a:hover,
+.top-nav a.active {
+  color: var(--accent);
+}

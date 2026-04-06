@@ -40,6 +40,7 @@
   let autosaveTimer = null;
   let previewTimer = null;
   let previewScrollY = 0;
+  let previewRenderVersion = 0;
 
   initializeSavedRepoHandle();
   updateDraftBanner();
@@ -266,7 +267,7 @@
       await writeTextFile("data/content-index.json", JSON.stringify(contentIndex, null, 2) + "\n");
       await writeTextFile(pagePath, renderPostPage(item));
       await writeTextFile("posts.html", renderIndexPage(contentIndex.posts || []));
-      await writeTextFile("index.html", renderHomePage(contentIndex.posts || []));
+      await writeTextFile("index.html", await renderHomePageFromLocal(contentIndex.posts || []));
 
       loadedPostRef = { item };
       loadedPostLabel.textContent = `loaded: ${item.slug}`;
@@ -525,6 +526,11 @@
     return path === "data/content-index.json" ? normalizeContentIndex(parsed) : parsed;
   }
 
+  async function readTextFile(path) {
+    const file = await getFileHandle(path, false).then((handle) => handle.getFile());
+    return file.text();
+  }
+
   async function writeTextFile(path, contents) {
     const handle = await getFileHandle(path, true);
     const writable = await handle.createWritable();
@@ -580,7 +586,7 @@
     return cleaned.trim() || "<p></p>";
   }
 
-  function renderPreview() {
+  async function renderPreview() {
     if (!previewDrawer.classList.contains("open")) {
       return;
     }
@@ -588,13 +594,30 @@
       previewScrollY = previewFrame.contentWindow ? previewFrame.contentWindow.scrollY : previewScrollY;
     } catch {
     }
+
+    const renderVersion = ++previewRenderVersion;
     const item = buildCurrentItem();
     const resolvedHero = resolveHeroImagePath(item.slug);
     if (resolvedHero) {
       item.image = resolvedHero;
     }
+    const templatePath = await resolvePreviewTemplatePath(item);
+    if (renderVersion !== previewRenderVersion) {
+      return;
+    }
+
+    if (!templatePath) {
+      previewFrame.dataset.ready = "false";
+      previewFrame.dataset.templatePath = "";
+      previewFrame.srcdoc = "<!DOCTYPE html><html lang=\"en\"><body style=\"margin:0;background:#000;color:#fff;font-family:Consolas,monospace;padding:1rem;\">Pick the website folder and make sure there is at least one post page in <code>posts/</code> to use the local preview shell.</body></html>";
+      return;
+    }
+
     const previewDocument = previewFrame.contentDocument;
-    if (previewFrame.dataset.ready === "true" && previewDocument && previewDocument.getElementById("previewBody")) {
+    if (previewFrame.dataset.ready === "true" &&
+        previewFrame.dataset.templatePath === templatePath &&
+        previewDocument &&
+        previewDocument.getElementById("previewBody")) {
       updatePreviewDocument(previewDocument, item);
       try {
         previewFrame.contentWindow.scrollTo(0, previewScrollY);
@@ -603,8 +626,17 @@
       return;
     }
 
+    const templateHtml = await readTextFile(templatePath);
+    if (renderVersion !== previewRenderVersion) {
+      return;
+    }
+
+    const templateDocument = new DOMParser().parseFromString(templateHtml, "text/html");
+    updatePreviewDocument(templateDocument, item);
+
     previewFrame.dataset.ready = "false";
-    previewFrame.srcdoc = renderPostPage(item);
+    previewFrame.dataset.templatePath = templatePath;
+    previewFrame.srcdoc = serializeDocument(templateDocument);
   }
 
   function queuePersistAndPreview() {
@@ -863,6 +895,8 @@
 <head>
   <meta name="viewport"
         content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <link rel="stylesheet" href="assets/site-shell.css" />
+  <script defer src="assets/site-shell.js"></script>
   <title>${title}</title>
   <style>
     :root {
@@ -872,20 +906,6 @@
       --accent: #ff3b30;
       --muted: #b8b8b8;
     }
-    * { box-sizing: border-box; }
-    body { margin: 0; font-family: Consolas, monospace; background: var(--bg); color: var(--fg); }
-    a { color: inherit; text-decoration: none; }
-    .top-nav {
-      white-space: nowrap;
-      overflow-x: auto;
-      overflow-y: hidden;
-      display: flex;
-      gap: 1rem;
-      padding: 1rem;
-      border-bottom: 1px solid var(--line);
-    }
-    .top-nav a:hover,
-    .top-nav a.active { color: var(--accent); }
     .page { max-width: 1100px; margin: 0 auto; padding: 1.5rem 1rem 4rem; }
     .list-header { display: flex; align-items: center; justify-content: flex-end; margin-bottom: 0.5rem; }
     .sort-toggle {
@@ -930,11 +950,7 @@
   </style>
 </head>
 <body>
-  <div class="top-nav">
-    <a href="index.html">home</a>
-    <a href="posts.html" class="active">posts</a>
-    <a href="#">datastream</a>
-  </div>
+  <div data-site-nav data-nav-prefix="" data-nav-section="posts"></div>
 
   <main class="page">
     <div class="list-header">
@@ -977,21 +993,18 @@ ${cards || emptyState}
   function renderPostPage(item) {
     const metaLine = [item.date].concat(item.tags || []).join(" | ");
     const heroPath = item.image.startsWith("../") ? item.image : `../${item.image}`;
+    const navSection = getNavSection(item);
 
     return `<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta name="viewport"
         content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <link rel="stylesheet" href="../assets/site-shell.css" />
+  <script defer src="../assets/site-shell.js"></script>
   <title>${escapeHtml(item.title)}</title>
   <style>
     :root { --bg: #000; --fg: #fff; --line: #252525; --accent: #ff3b30; --muted: #b8b8b8; }
-    * { box-sizing: border-box; }
-    body { margin: 0; font-family: Consolas, monospace; background: var(--bg); color: var(--fg); }
-    a { color: inherit; text-decoration: none; }
-    .top-nav { white-space: nowrap; overflow-x: auto; display: flex; gap: 1rem; padding: 1rem; border-bottom: 1px solid var(--line); }
-    .top-nav a:hover,
-    .top-nav a.active { color: var(--accent); }
     .page { max-width: 900px; margin: 0 auto; padding: 2rem 1rem 4rem; }
     .eyebrow { color: var(--accent); margin-bottom: 0.75rem; font-size: 0.95rem; }
     h1 { margin: 0 0 0.75rem 0; font-size: 2.2rem; font-weight: normal; letter-spacing: 0.04em; }
@@ -1026,11 +1039,7 @@ ${cards || emptyState}
   </style>
 </head>
 <body>
-  <div class="top-nav">
-    <a href="../index.html">home</a>
-    <a href="../posts.html" class="active">posts</a>
-    <a href="#">datastream</a>
-  </div>
+  <div data-site-nav data-nav-prefix="../" data-nav-section="${navSection}"></div>
   <main class="page">
     <div class="eyebrow" id="previewMeta">${escapeHtml(metaLine)}</div>
     <h1 id="previewTitle">${escapeHtml(item.title)}</h1>
@@ -1048,17 +1057,159 @@ ${cards || emptyState}
   function updatePreviewDocument(previewDocument, item) {
     const metaLine = [item.date].concat(item.tags || []).join(" | ");
     const heroPath = item.image.startsWith("../") ? item.image : `../${item.image}`;
+    const navSection = getNavSection(item);
+
+    const meta = previewDocument.getElementById("previewMeta") || previewDocument.querySelector(".eyebrow");
+    const title = previewDocument.getElementById("previewTitle") || previewDocument.querySelector("h1");
+    const deck = previewDocument.getElementById("previewDeck") || previewDocument.querySelector(".deck");
+    const hero = previewDocument.getElementById("previewHero") || previewDocument.querySelector(".hero");
+    const body = previewDocument.getElementById("previewBody") || previewDocument.querySelector(".post-body");
+    const navRoot = previewDocument.querySelector("[data-site-nav]");
 
     previewDocument.title = `${item.title}`;
-    previewDocument.getElementById("previewMeta").textContent = metaLine;
-    previewDocument.getElementById("previewTitle").textContent = item.title;
-    previewDocument.getElementById("previewDeck").textContent = item.summary;
 
-    const hero = previewDocument.getElementById("previewHero");
-    hero.setAttribute("src", heroPath);
-    hero.setAttribute("alt", item.title);
+    if (meta) {
+      meta.id = "previewMeta";
+      meta.textContent = metaLine;
+    }
+    if (title) {
+      title.id = "previewTitle";
+      title.textContent = item.title;
+    }
+    if (deck) {
+      deck.id = "previewDeck";
+      deck.textContent = item.summary;
+    }
+    if (hero) {
+      hero.id = "previewHero";
+      hero.setAttribute("src", heroPath);
+      hero.setAttribute("alt", item.title);
+    }
+    if (body) {
+      body.id = "previewBody";
+      body.innerHTML = item.bodyHtml;
+    }
+    if (navRoot) {
+      navRoot.dataset.navSection = navSection;
+      if (previewDocument.defaultView && typeof previewDocument.defaultView.renderSiteNav === "function") {
+        previewDocument.defaultView.renderSiteNav(navRoot);
+      }
+    }
+  }
 
-    previewDocument.getElementById("previewBody").innerHTML = item.bodyHtml;
+  function getNavSection(item) {
+    return item && item.navSection === "engineering tips" ? "engineering-tips" : "posts";
+  }
+
+  async function resolvePreviewTemplatePath(item) {
+    if (!repoHandle) {
+      return null;
+    }
+
+    const candidates = [];
+    if (loadedPostRef && loadedPostRef.item && loadedPostRef.item.path) {
+      candidates.push(loadedPostRef.item.path);
+    }
+    if (item && item.path) {
+      candidates.push(item.path);
+    }
+    if (contentIndexCache && Array.isArray(contentIndexCache.posts)) {
+      contentIndexCache.posts.forEach((entry) => {
+        if (entry && entry.path) {
+          candidates.push(entry.path);
+        }
+      });
+    }
+
+    for (const candidate of [...new Set(candidates)]) {
+      if (await fileExists(candidate)) {
+        return candidate;
+      }
+    }
+
+    return null;
+  }
+
+  async function fileExists(path) {
+    try {
+      await getFileHandle(path, false);
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
+  function serializeDocument(doc) {
+    const doctype = doc.doctype ? `<!DOCTYPE ${doc.doctype.name}>` : "<!DOCTYPE html>";
+    return `${doctype}\n${doc.documentElement.outerHTML}`;
+  }
+
+  async function renderHomePageFromLocal(items) {
+    const templateHtml = await readTextFile("index.html");
+    const templateDocument = new DOMParser().parseFromString(templateHtml, "text/html");
+    updateHomePageDocument(templateDocument, items);
+    return serializeDocument(templateDocument);
+  }
+
+  function updateHomePageDocument(doc, items) {
+    const visibleItems = items
+      .filter((item) => item.published !== false)
+      .sort((a, b) => new Date(b.date) - new Date(a.date));
+
+    const existingGrid = doc.querySelector(".grid");
+    const existingEmptyState = doc.querySelector(".empty-state");
+    const introSection = doc.querySelector(".intro");
+    const insertionPoint = existingGrid || existingEmptyState;
+
+    if (existingGrid) {
+      existingGrid.innerHTML = "";
+    }
+    if (existingEmptyState) {
+      existingEmptyState.remove();
+    }
+
+    if (visibleItems.length) {
+      const grid = existingGrid || doc.createElement("div");
+      grid.className = "grid";
+      grid.innerHTML = visibleItems.map((item) => `    <div class="cell img-cell">
+      <img src="${escapeAttribute(item.image)}" alt="${escapeAttribute(item.title)}">
+      <div class="overlay-title">${escapeHtml(item.title)}</div>
+      <div class="overlay-desc">${escapeHtml(item.summary)}</div>
+      <a href="${escapeAttribute(item.path)}" aria-label="${escapeAttribute(item.title)}"></a>
+    </div>`).join("\n\n");
+
+      if (!existingGrid) {
+        if (insertionPoint) {
+          insertionPoint.replaceWith(grid);
+        } else if (introSection) {
+          introSection.insertAdjacentElement("afterend", grid);
+        } else if (doc.body) {
+          doc.body.appendChild(grid);
+        }
+      }
+      return;
+    }
+
+    if (existingGrid) {
+      existingGrid.remove();
+    }
+
+    const emptyState = doc.createElement("section");
+    emptyState.className = "empty-state";
+    emptyState.innerHTML = `
+    <div class="empty-card">
+      <h2>No Posts Live Right Now</h2>
+      <p>The published post archive has been cleared for now.</p>
+      <p>You can still use the editor to make new ones, and they will show up on <a href="posts.html">the posts page</a> when you publish them.</p>
+    </div>`;
+
+    if (insertionPoint) {
+      insertionPoint.replaceWith(emptyState);
+    } else if (introSection) {
+      introSection.insertAdjacentElement("afterend", emptyState);
+    } else if (doc.body) {
+      doc.body.appendChild(emptyState);
+    }
   }
 
   function normalizeBodyHtml(html) {
@@ -1311,217 +1462,6 @@ ${cards || emptyState}
     }
 
     return `https://${trimmed}`;
-  }
-
-  function renderHomePage(items) {
-    const visibleItems = items
-      .filter((item) => item.published !== false)
-      .sort((a, b) => new Date(b.date) - new Date(a.date));
-
-    const cards = visibleItems.map((item) => `    <div class="cell img-cell">
-      <img src="${escapeAttribute(item.image)}" alt="${escapeAttribute(item.title)}">
-      <div class="overlay-title">${escapeHtml(item.title)}</div>
-      <div class="overlay-desc">${escapeHtml(item.summary)}</div>
-      <a href="${escapeAttribute(item.path)}" aria-label="${escapeAttribute(item.title)}"></a>
-    </div>`).join("\n\n");
-
-    const emptyState = `  <section class="empty-state">
-    <div class="empty-card">
-      <h2>No Posts Live Right Now</h2>
-      <p>The published post archive has been cleared for now.</p>
-      <p>You can still use the editor to make new ones, and they will show up on <a href="posts.html">the posts page</a> when you publish them.</p>
-    </div>
-  </section>`;
-
-    return `<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta name="viewport"
-        content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-  <style>
-    body {
-      margin: 0;
-      font-family: Consolas, monospace;
-      background: #000;
-      color: #fff;
-      overflow-x: hidden;
-    }
-
-    * {
-      box-sizing: border-box;
-    }
-
-    .top-nav {
-      white-space: nowrap;
-      overflow-x: auto;
-      overflow-y: hidden;
-      display: flex;
-      gap: 1rem;
-      padding: 1rem;
-      border-bottom: 1px solid #222;
-    }
-
-    .top-nav a {
-      text-decoration: none;
-      color: #fff;
-      font-size: 1rem;
-      flex: 0 0 auto;
-    }
-
-    .top-nav a:hover,
-    .top-nav a.active {
-      color: #ff3b30;
-    }
-
-    .intro {
-      padding: 1.75rem 1rem 1.25rem;
-      border-bottom: 1px solid #222;
-    }
-
-    .intro-inner {
-      max-width: 1100px;
-      margin: 0 auto;
-    }
-
-    .intro p {
-      margin: 0 0 1rem 0;
-      font-size: clamp(1rem, 0.9rem + 0.55vw, 1.25rem);
-      line-height: 1.45;
-      max-width: 70ch;
-      text-align: left;
-      margin-left: auto;
-      margin-right: auto;
-    }
-
-    .construction-notice {
-      color: #ff3b30;
-      font-weight: bold;
-    }
-
-    .grid {
-      display: grid;
-      grid-template-columns: repeat(3, minmax(0, 1fr));
-      gap: 0;
-      width: 100vw;
-    }
-
-    .cell {
-      position: relative;
-      overflow: hidden;
-    }
-
-    .img-cell {
-      aspect-ratio: 4 / 3;
-    }
-
-    .img-cell img {
-      width: 100%;
-      height: 100%;
-      object-fit: cover;
-      display: block;
-      transition: filter 0.3s ease;
-    }
-
-    .overlay-title,
-    .overlay-desc {
-      position: absolute;
-      z-index: 1;
-      text-shadow: 0 1px 3px rgba(0, 0, 0, 0.85);
-      pointer-events: none;
-    }
-
-    .overlay-title {
-      top: 0.5rem;
-      left: 0.5rem;
-      right: 0.5rem;
-      font-size: 1.5rem;
-      font-weight: normal;
-    }
-
-    .overlay-desc {
-      bottom: 0.5rem;
-      right: 0.5rem;
-      left: 0.5rem;
-      text-align: right;
-      font-size: 1rem;
-      font-weight: normal;
-    }
-
-    .img-cell:hover img {
-      filter: brightness(60%);
-    }
-
-    .img-cell a {
-      position: absolute;
-      inset: 0;
-      z-index: 2;
-    }
-
-    .empty-state {
-      max-width: 1100px;
-      margin: 0 auto;
-      padding: 2rem 1rem 4rem;
-    }
-
-    .empty-card {
-      border: 1px solid #222;
-      background: #050505;
-      padding: 1.5rem;
-      max-width: 720px;
-    }
-
-    .empty-card h2 {
-      margin: 0 0 0.75rem 0;
-      font-size: 1.5rem;
-      font-weight: normal;
-      color: #ff3b30;
-    }
-
-    .empty-card p {
-      margin: 0 0 1rem 0;
-      line-height: 1.6;
-      color: #b8b8b8;
-    }
-
-    .empty-card a {
-      text-decoration: none;
-      color: #fff;
-      border-bottom: 1px solid #ff3b30;
-    }
-
-    .empty-card a:hover {
-      color: #ff3b30;
-    }
-
-    @media (max-width: 900px) {
-      .grid {
-        grid-template-columns: 1fr;
-      }
-    }
-  </style>
-</head>
-<body>
-  <div class="top-nav">
-    <a href="index.html" class="active">home</a>
-    <a href="posts.html">posts</a>
-    <a href="#">datastream</a>
-  </div>
-
-  <section class="intro">
-    <div class="intro-inner">
-      <p class="construction-notice">UNDER CONSTRUCTION: Currently populated by test articles, no content here yet!</p>
-      <p>Website of Isaiah. I do Mechanical Engineering, Winemaking, Electrician/handyman work, Car Repair, and various other occasionally useful things. My goal is to be as useful and effective as I know I am capable of (on the order of 1000x my current output).</p>
-      <p>I have made this website because I aggressively file away links and notes on my personal services and believe that some other people may find them useful. Also to increase my luck cross section (link to thread).</p>
-      <p>Mankind needs more useful people who live up to their God-given talents.</p>
-    </div>
-  </section>
-
-${cards ? `  <div class="grid">
-${cards}
-  </div>` : emptyState}
-</body>
-</html>
-`;
   }
 
   function normalizeContentIndex(contentIndex) {

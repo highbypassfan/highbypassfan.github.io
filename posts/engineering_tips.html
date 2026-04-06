@@ -3,15 +3,10 @@
 <head>
   <meta name="viewport"
         content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <link rel="stylesheet" href="../assets/site-shell.css" />
+  <script defer src="../assets/site-shell.js"></script>
   <title>Engineering Tips</title>
   <style>
-    :root { --bg: #000; --fg: #fff; --line: #252525; --accent: #ff3b30; --muted: #b8b8b8; }
-    * { box-sizing: border-box; }
-    body { margin: 0; font-family: Consolas, monospace; background: var(--bg); color: var(--fg); }
-    a { color: inherit; text-decoration: none; }
-    .top-nav { white-space: nowrap; overflow-x: auto; display: flex; gap: 1rem; padding: 1rem; border-bottom: 1px solid var(--line); }
-    .top-nav a:hover,
-    .top-nav a.active { color: var(--accent); }
     .page { max-width: 900px; margin: 0 auto; padding: 2rem 1rem 4rem; }
     .eyebrow { color: var(--accent); margin-bottom: 0.75rem; font-size: 0.95rem; }
     h1 { margin: 0 0 0.75rem 0; font-size: 2.2rem; font-weight: normal; letter-spacing: 0.04em; }
@@ -46,11 +41,7 @@
   </style>
 </head>
 <body>
-  <div class="top-nav">
-    <a href="../index.html">home</a>
-    <a href="../posts.html" class="active">posts</a>
-    <a href="#">datastream</a>
-  </div>
+  <div data-site-nav data-nav-prefix="../" data-nav-section="engineering-tips"></div>
   <main class="page">
     <div class="eyebrow" id="previewMeta">2026-04-06 | Advice</div>
     <h1 id="previewTitle">Engineering Tips</h1>
