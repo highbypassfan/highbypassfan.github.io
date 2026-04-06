@@ -1,4 +1,4 @@
-:root {
+﻿:root {
   --bg: #000;
   --fg: #fff;
   --line: #252525;
@@ -20,6 +20,32 @@ body {
 a {
   color: inherit;
   text-decoration: none;
+}
+
+.intro a,
+.post-body a,
+.empty-card a {
+  color: var(--fg);
+  text-decoration: none;
+}
+
+.intro a::after,
+.post-body a::after,
+.empty-card a::after {
+  content: "\2197";
+  color: var(--muted);
+}
+
+.intro a:hover,
+.post-body a:hover,
+.empty-card a:hover {
+  color: var(--accent);
+}
+
+.intro a:hover::after,
+.post-body a:hover::after,
+.empty-card a:hover::after {
+  color: var(--accent);
 }
 
 .top-nav {

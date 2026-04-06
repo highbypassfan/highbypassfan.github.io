@@ -1012,7 +1012,6 @@ ${cards || emptyState}
     .hero { width: 100%; display: block; border: 1px solid var(--line); margin-bottom: 2rem; background: #050505; }
     .section { padding-top: 1rem; border-top: 1px solid var(--line); margin-top: 1rem; }
     .section h2 { margin: 0 0 0.75rem 0; font-size: 1.25rem; font-weight: normal; color: var(--accent); }
-    .post-body a { color: var(--accent); }
     .post-body p,
     .post-body li { line-height: 1.6; }
     .post-body ul,
