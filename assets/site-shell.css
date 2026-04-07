@@ -66,3 +66,103 @@ a {
 .top-nav a.active {
   color: var(--accent);
 }
+
+.hero,
+.post-image img,
+.post-album-image {
+  cursor: zoom-in;
+}
+
+.post-album {
+  width: 100%;
+  margin: 2rem auto;
+  text-align: center;
+}
+
+.post-album-image {
+  display: block;
+  width: auto;
+  max-width: 100%;
+  max-height: min(calc((100vw - 2rem) * 0.75), 675px);
+  margin: 0 auto;
+  border: 1px solid var(--line);
+}
+
+.post-album-meta {
+  display: grid;
+  grid-template-columns: 2.5rem minmax(0, 1fr) 2.5rem;
+  gap: 0.75rem;
+  align-items: center;
+  margin-top: 0.65rem;
+}
+
+.post-album-caption {
+  color: var(--muted);
+  font-size: 0.95rem;
+  line-height: 1.5;
+  min-height: 1.5em;
+}
+
+.album-nav {
+  border: 1px solid var(--line);
+  background: #111;
+  color: var(--fg);
+  font: inherit;
+  padding: 0.4rem 0;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.album-nav:hover:not([disabled]) {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.album-nav[disabled] {
+  color: #555;
+  border-color: #2a2a2a;
+  cursor: default;
+}
+
+.image-lightbox {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem;
+  background: rgba(0, 0, 0, 0.94);
+}
+
+.image-lightbox.open {
+  display: flex;
+}
+
+.image-lightbox img {
+  display: block;
+  max-width: min(96vw, 1800px);
+  max-height: 92vh;
+  width: auto;
+  height: auto;
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  background: #050505;
+}
+
+.image-lightbox-close {
+  position: absolute;
+  top: 0.9rem;
+  right: 1rem;
+  border: 0;
+  background: transparent;
+  color: #fff;
+  font: inherit;
+  font-size: 1.8rem;
+  line-height: 1;
+  padding: 0.2rem 0.4rem;
+  cursor: pointer;
+}
+
+.image-lightbox-close:hover {
+  color: var(--accent);
+}

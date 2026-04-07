@@ -1,11 +1,24 @@
 {
   "posts": [
     {
+      "slug": "reading_list",
+      "title": "Reading List",
+      "date": "2026-04-07",
+      "published": true,
+      "summary": "Articles and resources I have found useful.",
+      "tags": [],
+      "image": "images/reading_list/Steel.png",
+      "heroBlurb": "They'll be waiting for awhile!",
+      "path": "posts/reading_list.html",
+      "navSection": "posts",
+      "bodyHtml": "<p><br></p><p>Engineering:</p><p><!-- obsidian --></p><p><a href=\"https://guzey.com/follow-up/\" class=\"external-link\" target=\"_blank\" rel=\"noopener nofollow\">https://guzey.com/follow-up/</a></p><p><br></p><p></p><p><br></p><p>a</p>"
+    },
+    {
       "slug": "engineering_tips",
       "title": "Engineering Tips",
       "date": "2026-04-06",
       "published": true,
-      "summary": "Advice for people interested in solving problems.",
+      "summary": "For people interested in solving problems.",
       "tags": [
         "Advice"
       ],
@@ -22,9 +35,10 @@
       "summary": "Test",
       "tags": [],
       "image": "images/test_post_1/hawkeye.jpg",
+      "heroBlurb": "",
       "path": "posts/test_post_1.html",
       "navSection": "posts",
-      "bodyHtml": "<p></p><p></p><p></p><p></p><figure class=\"post-image\"><img src=\"../images/test_post_1/Roof.jfif\" alt=\"Test Post 1\"></figure><p>test</p><p><br></p><p><br></p><p><br></p><p>aga</p>"
+      "bodyHtml": "<p></p><p></p><p></p><p></p><figure class=\"post-image\"><img src=\"../images/test_post_1/Roof.jfif\" alt=\"Test Post 1\"><figcaption>test</figcaption></figure><p>test</p><p><br></p><p><br></p><p><br></p><p>aga</p>"
     }
   ]
 }
