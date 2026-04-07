@@ -188,6 +188,43 @@
       font-size: 0.95rem;
       line-height: 1.5;
     }
+    .editor .post-album {
+      margin: 1.5rem auto;
+      border: 1px dashed var(--line);
+      padding: 0.75rem;
+      max-width: 100%;
+      text-align: center;
+    }
+    .editor .post-album-image {
+      display: block;
+      max-width: 100%;
+      margin: 0 auto;
+      border: 1px solid var(--line);
+    }
+    .editor .post-album-meta {
+      display: grid;
+      grid-template-columns: 2.25rem minmax(0, 1fr) 2.25rem;
+      gap: 0.5rem;
+      align-items: center;
+      margin-top: 0.65rem;
+    }
+    .editor .post-album-caption {
+      color: var(--muted);
+      font-size: 0.95rem;
+      line-height: 1.5;
+      min-height: 1.5em;
+    }
+    .editor .album-nav {
+      border: 1px solid var(--line);
+      background: #111;
+      color: var(--fg);
+      padding: 0.3rem 0;
+      line-height: 1;
+    }
+    .editor .album-nav[disabled] {
+      color: #555;
+      cursor: default;
+    }
     .editor .align-center {
       text-align: center;
     }
@@ -470,6 +507,9 @@
         <div class="field">
           <label>Images</label>
           <input id="imagePicker" type="file" accept="image/*" multiple />
+          <div class="row" style="margin-top: 0.65rem;">
+            <button id="addAlbum" type="button" title="Choose a folder of images and add it as an album">add album</button>
+          </div>
           <div class="dropzone" id="dropzone">
             paste images here with Ctrl+V, or use the file picker above.
             the first image becomes the hero image unless you pick a different H button.

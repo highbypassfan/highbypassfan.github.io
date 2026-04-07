@@ -5,6 +5,7 @@
   const selectPostButton = document.getElementById("selectPost");
   const generateButton = document.getElementById("generate");
   const imagePicker = document.getElementById("imagePicker");
+  const addAlbumButton = document.getElementById("addAlbum");
   const imageList = document.getElementById("imageList");
   const editor = document.getElementById("editor");
   const status = document.getElementById("status");
@@ -124,6 +125,23 @@
     imagePicker.value = "";
   });
 
+  addAlbumButton.addEventListener("click", async () => {
+    if (!window.showDirectoryPicker) {
+      setStatus("Your browser does not support folder picking here. Use current Chrome and open this tool locally.", true);
+      return;
+    }
+
+    try {
+      const folderHandle = await window.showDirectoryPicker();
+      await appendAlbumFromDirectory(folderHandle);
+    } catch (error) {
+      if (error && error.name === "AbortError") {
+        return;
+      }
+      setStatus(error.message || String(error), true);
+    }
+  });
+
   document.addEventListener("paste", (event) => {
     if (!dropzone.contains(event.target) && !editor.contains(event.target)) {
       return;
@@ -239,6 +257,7 @@
       const existingHero = loadedPostRef && loadedPostRef.item.slug === slug ? loadedPostRef.item.image : null;
       const resolvedHero = resolveHeroImagePath(slug);
       const heroImage = resolvedHero || savedImages[0] || existingHero || "temp/Bend_Lines.jfif";
+      const heroBlurb = getHeroImageBlurb(heroImage);
 
       const item = {
         slug,
@@ -248,6 +267,7 @@
         summary,
         tags,
         image: heroImage,
+        heroBlurb,
         path: pagePath,
         navSection,
         bodyHtml
@@ -290,6 +310,8 @@
   function appendImages(files) {
     pendingImages = pendingImages.concat(
       files.map((file) => ({
+        kind: "image",
+        id: makeEntryId("image"),
         file,
         name: sanitizeFileName(file.name || `image-${pendingImages.length + 1}.png`),
         blurb: "",
@@ -297,7 +319,50 @@
       }))
     );
     if (!heroImagePath && pendingImages.length) {
-      heroImagePath = pendingImages[0].relativePath;
+      const firstPendingImage = getFirstPendingImage();
+      if (firstPendingImage) {
+        heroImagePath = firstPendingImage.relativePath;
+      }
+    }
+    renderImageList();
+    queuePersistAndPreview();
+  }
+
+  async function appendAlbumFromDirectory(folderHandle) {
+    const files = [];
+    for await (const [name, handle] of folderHandle.entries()) {
+      if (handle.kind !== "file") {
+        continue;
+      }
+      const file = await handle.getFile();
+      if (!file.type.startsWith("image/")) {
+        continue;
+      }
+      files.push({ file, name: sanitizeFileName(name) });
+    }
+
+    if (!files.length) {
+      throw new Error("No image files found in that folder.");
+    }
+
+    files.sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: "base" }));
+    const slug = slugify(slugInput.value.trim() || titleInput.value.trim());
+    const album = {
+      kind: "album",
+      id: makeEntryId("album"),
+      name: sanitizeFileName(folderHandle.name || `album-${pendingImages.length + 1}`),
+      currentIndex: 0,
+      images: files.map(({ file, name }) => ({
+        file,
+        name,
+        blurb: "",
+        relativePath: slug ? `images/${slug}/${name}` : `images/untitled_post/${name}`
+      }))
+    };
+
+    pendingImages.push(album);
+    if (!heroImagePath && album.images.length) {
+      heroImagePath = album.images[0].relativePath;
     }
     renderImageList();
     queuePersistAndPreview();
@@ -327,6 +392,60 @@
     });
 
     pendingImages.forEach((entry, index) => {
+      if (entry.kind === "album") {
+        const currentImage = entry.images[entry.currentIndex] || entry.images[0];
+        imageList.appendChild(buildImageRow({
+          entry: {
+            ...entry,
+            displayName: `${entry.name}/ (${entry.currentIndex + 1}/${entry.images.length})`,
+            blurb: currentImage ? currentImage.blurb : "",
+            relativePath: currentImage ? currentImage.relativePath : "",
+            isAlbum: true,
+            canGoPrev: entry.currentIndex > 0,
+            canGoNext: entry.currentIndex < entry.images.length - 1
+          },
+          onHero: () => {
+            if (!currentImage) {
+              return;
+            }
+            heroImagePath = currentImage.relativePath;
+            renderImageList();
+            queuePersistAndPreview();
+          },
+          onInsert: () => insertAlbumFigure(entry),
+          onCaption: (value) => {
+            if (!currentImage) {
+              return;
+            }
+            currentImage.blurb = value;
+            updateAlbumInDocument(entry);
+            queuePersistAndPreview();
+          },
+          onRemove: () => {
+            removeAlbumFromDocument(entry.id);
+            pendingImages.splice(index, 1);
+            if (currentImage && heroImagePath === currentImage.relativePath) {
+              chooseFallbackHero();
+            }
+            renderImageList();
+            queuePersistAndPreview();
+          },
+          onPrev: () => {
+            if (entry.currentIndex > 0) {
+              entry.currentIndex -= 1;
+              renderImageList();
+            }
+          },
+          onNext: () => {
+            if (entry.currentIndex < entry.images.length - 1) {
+              entry.currentIndex += 1;
+              renderImageList();
+            }
+          }
+        }));
+        return;
+      }
+
       imageList.appendChild(buildImageRow({
         entry,
         onHero: () => {
@@ -353,7 +472,7 @@
     });
   }
 
-  function buildImageRow({ entry, onHero, onInsert, onCaption, onRemove }) {
+  function buildImageRow({ entry, onHero, onInsert, onCaption, onRemove, onPrev, onNext }) {
     const row = document.createElement("div");
     row.className = "image-item";
 
@@ -361,13 +480,15 @@
     details.className = "image-item-main";
 
     const name = document.createElement("div");
-    name.textContent = entry.name;
+    name.textContent = entry.displayName || entry.name;
 
     const blurbInput = document.createElement("input");
     blurbInput.type = "text";
     blurbInput.placeholder = "optional blurb below image";
     blurbInput.value = entry.blurb || "";
-    blurbInput.title = "Optional caption or blurb shown below inserted images";
+    blurbInput.title = entry.isAlbum
+      ? "Optional blurb shown below the current album image"
+      : "Optional caption or blurb shown below inserted images";
     blurbInput.addEventListener("input", () => {
       onCaption(blurbInput.value);
     });
@@ -386,8 +507,10 @@
 
     const insert = document.createElement("button");
     insert.type = "button";
-    insert.textContent = "insert";
-    insert.title = "Insert this image into the document body as a centered figure";
+    insert.textContent = entry.isAlbum ? "insert album" : "insert";
+    insert.title = entry.isAlbum
+      ? "Insert this album into the document body"
+      : "Insert this image into the document body as a centered figure";
     insert.addEventListener("click", onInsert);
 
     const remove = document.createElement("button");
@@ -396,7 +519,25 @@
     remove.title = "Remove this image from the editor and delete it from the post folder if it already exists";
     remove.addEventListener("click", onRemove);
 
-    actions.append(hero, insert, remove);
+    if (entry.isAlbum) {
+      const prev = document.createElement("button");
+      prev.type = "button";
+      prev.textContent = "<";
+      prev.title = "Show the previous image in this album";
+      prev.disabled = !entry.canGoPrev;
+      prev.addEventListener("click", onPrev);
+
+      const next = document.createElement("button");
+      next.type = "button";
+      next.textContent = ">";
+      next.title = "Show the next image in this album";
+      next.disabled = !entry.canGoNext;
+      next.addEventListener("click", onNext);
+
+      actions.append(hero, prev, next, insert, remove);
+    } else {
+      actions.append(hero, insert, remove);
+    }
     row.append(details, actions);
     return row;
   }
@@ -448,6 +589,28 @@
     queuePersistAndPreview();
   }
 
+  function insertAlbumFigure(album) {
+    const items = album.images.map((image) => ({
+      src: `../${image.relativePath}`,
+      alt: image.blurb || titleInput.value.trim() || image.name,
+      blurb: image.blurb || ""
+    }));
+
+    if (!items.length) {
+      setStatus("Add at least one image before inserting an album.", true);
+      return;
+    }
+
+    const initial = items[Math.min(album.currentIndex, items.length - 1)];
+    const itemsMarkup = items.map((item) => `<span class="album-item" data-src="${escapeAttribute(item.src)}" data-alt="${escapeAttribute(item.alt)}" data-blurb="${escapeAttribute(item.blurb)}"></span>`).join("");
+    const figureHtml = `<p></p><figure class="post-album" data-album-id="${escapeAttribute(album.id)}" data-index="${Math.min(album.currentIndex, items.length - 1)}"><img class="post-album-image" src="${escapeAttribute(initial.src)}" alt="${escapeAttribute(initial.alt)}" /><div class="post-album-meta"><button class="album-nav prev" type="button"${items.length <= 1 ? " disabled" : ""}>&lt;</button><figcaption class="post-album-caption">${escapeHtml(initial.blurb)}</figcaption><button class="album-nav next" type="button"${items.length <= 1 ? " disabled" : ""}>&gt;</button></div><div class="album-data" hidden>${itemsMarkup}</div></figure><p></p>`;
+    editor.focus();
+    document.execCommand("insertHTML", false, figureHtml);
+    cleanupEditorMarkup();
+    editor.focus();
+    queuePersistAndPreview();
+  }
+
   async function loadPostIntoEditor(item) {
     titleInput.value = item.title;
     slugInput.value = item.slug;
@@ -487,11 +650,12 @@
         if (handle.kind !== "file") {
           continue;
         }
+        const imagePath = `${folderPath}/${name}`;
         items.push({
           name,
-          relativePath: `../${folderPath}/${name}`,
-          isHero: `${folderPath}/${name}` === item.image,
-          blurb: captionMap[`../${folderPath}/${name}`] || ""
+          relativePath: `../${imagePath}`,
+          isHero: imagePath === item.image,
+          blurb: captionMap[`../${imagePath}`] || (imagePath === item.image ? (item.heroBlurb || "") : "")
         });
       }
       items.sort((a, b) => a.name.localeCompare(b.name));
@@ -509,12 +673,15 @@
     const folderHandle = await ensureDirectory(folderPath, true);
     const savedPaths = [];
 
-    for (const image of images) {
-      const fileHandle = await folderHandle.getFileHandle(image.name, { create: true });
-      const writable = await fileHandle.createWritable();
-      await writable.write(await image.file.arrayBuffer());
-      await writable.close();
-      savedPaths.push(`${folderPath}/${image.name}`);
+    for (const entry of images) {
+      const albumImages = entry.kind === "album" ? entry.images : [entry];
+      for (const image of albumImages) {
+        const fileHandle = await folderHandle.getFileHandle(image.name, { create: true });
+        const writable = await fileHandle.createWritable();
+        await writable.write(await image.file.arrayBuffer());
+        await writable.close();
+        savedPaths.push(`${folderPath}/${image.name}`);
+      }
     }
 
     return savedPaths;
@@ -566,6 +733,8 @@
     const navSection = navSectionInput.value.trim() || "posts";
     const fallbackImage = loadedPostRef ? loadedPostRef.item.image : "temp/Bend_Lines.jfif";
     const bodyHtml = safeBodyHtml();
+    const resolvedHero = resolveHeroImagePath(slug);
+    const image = resolvedHero || fallbackImage;
 
     return {
       slug,
@@ -574,7 +743,8 @@
       published,
       summary: summary || "Preview summary.",
       tags,
-      image: fallbackImage,
+      image,
+      heroBlurb: getHeroImageBlurb(image),
       path: `posts/${slug || "untitled_post"}.html`,
       navSection,
       bodyHtml
@@ -597,10 +767,6 @@
 
     const renderVersion = ++previewRenderVersion;
     const item = buildCurrentItem();
-    const resolvedHero = resolveHeroImagePath(item.slug);
-    if (resolvedHero) {
-      item.image = resolvedHero;
-    }
     const templatePath = await resolvePreviewTemplatePath(item);
     if (renderVersion !== previewRenderVersion) {
       return;
@@ -812,16 +978,95 @@
     });
   }
 
+  function removeAlbumFromDocument(albumId) {
+    if (!albumId) {
+      return;
+    }
+    editor.querySelectorAll(`figure.post-album[data-album-id="${cssEscape(albumId)}"]`).forEach((figure) => {
+      figure.remove();
+    });
+  }
+
+  function updateAlbumInDocument(album) {
+    if (!album || !album.id || !album.images.length) {
+      return;
+    }
+
+    const currentIndex = Math.min(album.currentIndex, album.images.length - 1);
+    const currentImage = album.images[currentIndex];
+    const items = album.images.map((image) => ({
+      src: `../${image.relativePath}`,
+      alt: image.blurb || titleInput.value.trim() || image.name,
+      blurb: image.blurb || ""
+    }));
+
+    editor.querySelectorAll(`figure.post-album[data-album-id="${cssEscape(album.id)}"]`).forEach((figure) => {
+      figure.setAttribute("data-index", String(currentIndex));
+
+      const displayImage = figure.querySelector(".post-album-image");
+      if (displayImage) {
+        displayImage.setAttribute("src", `../${currentImage.relativePath}`);
+        displayImage.setAttribute("alt", currentImage.blurb || titleInput.value.trim() || currentImage.name);
+      }
+
+      const caption = figure.querySelector(".post-album-caption");
+      if (caption) {
+        caption.textContent = currentImage.blurb || "";
+      }
+
+      const prev = figure.querySelector(".album-nav.prev");
+      const next = figure.querySelector(".album-nav.next");
+      if (prev) {
+        prev.disabled = currentIndex === 0;
+      }
+      if (next) {
+        next.disabled = currentIndex === album.images.length - 1;
+      }
+
+      const dataContainer = figure.querySelector(".album-data");
+      if (dataContainer) {
+        dataContainer.innerHTML = items.map((item) => `<span class="album-item" data-src="${escapeAttribute(item.src)}" data-alt="${escapeAttribute(item.alt)}" data-blurb="${escapeAttribute(item.blurb)}"></span>`).join("");
+      }
+    });
+  }
+
   function chooseFallbackHero() {
     if (existingImages.length) {
       heroImagePath = existingImages[0].relativePath.slice(3);
       return;
     }
     if (pendingImages.length) {
-      heroImagePath = pendingImages[0].relativePath;
-      return;
+      const firstPendingImage = getFirstPendingImage();
+      if (firstPendingImage) {
+        heroImagePath = firstPendingImage.relativePath;
+        return;
+      }
     }
     heroImagePath = "";
+  }
+
+  function getFirstPendingImage() {
+    for (const entry of pendingImages) {
+      if (entry.kind === "album") {
+        if (entry.images && entry.images.length) {
+          return entry.images[0];
+        }
+        continue;
+      }
+      if (entry.relativePath) {
+        return entry;
+      }
+    }
+    return null;
+  }
+
+  function getAllImageEntries() {
+    const flattenedPending = pendingImages.flatMap((entry) => entry.kind === "album" ? entry.images : [entry]);
+    return existingImages.concat(flattenedPending);
+  }
+
+  function makeEntryId(prefix) {
+    return `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
   }
 
   function applyBlockAlignment(alignment) {
@@ -994,6 +1239,7 @@ ${cards || emptyState}
     const metaLine = [item.date].concat(item.tags || []).join(" | ");
     const heroPath = item.image.startsWith("../") ? item.image : `../${item.image}`;
     const navSection = getNavSection(item);
+    const heroBlurb = (item.heroBlurb || "").trim();
 
     return `<!DOCTYPE html>
 <html lang="en">
@@ -1009,7 +1255,9 @@ ${cards || emptyState}
     .eyebrow { color: var(--accent); margin-bottom: 0.75rem; font-size: 0.95rem; }
     h1 { margin: 0 0 0.75rem 0; font-size: 2.2rem; font-weight: normal; letter-spacing: 0.04em; }
     .deck { margin: 0 0 1.5rem 0; color: var(--muted); line-height: 1.6; max-width: 70ch; }
-    .hero { width: 100%; display: block; border: 1px solid var(--line); margin-bottom: 2rem; background: #050505; }
+    .hero-figure { margin: 0 0 2rem 0; }
+    .hero { width: auto; max-width: 100%; max-height: min(calc((100vw - 2rem) * 0.75), 675px); display: block; border: 1px solid var(--line); margin: 0 auto 2rem; background: #050505; }
+    .hero-caption { margin-top: -1.3rem; color: var(--muted); font-size: 0.95rem; line-height: 1.5; text-align: center; }
     .section { padding-top: 1rem; border-top: 1px solid var(--line); margin-top: 1rem; }
     .section h2 { margin: 0 0 0.75rem 0; font-size: 1.25rem; font-weight: normal; color: var(--accent); }
     .post-body p,
@@ -1025,7 +1273,9 @@ ${cards || emptyState}
     }
     .post-image img {
       display: block;
+      width: auto;
       max-width: 100%;
+      max-height: min(calc((100vw - 2rem) * 0.75), 675px);
       margin: 0 auto;
       border: 1px solid var(--line);
     }
@@ -1043,7 +1293,10 @@ ${cards || emptyState}
     <div class="eyebrow" id="previewMeta">${escapeHtml(metaLine)}</div>
     <h1 id="previewTitle">${escapeHtml(item.title)}</h1>
     <p class="deck" id="previewDeck">${escapeHtml(item.summary)}</p>
-    <img class="hero" id="previewHero" src="${escapeAttribute(heroPath)}" alt="${escapeAttribute(item.title)}" />
+    <figure class="hero-figure" id="previewHeroFigure">
+      <img class="hero" id="previewHero" src="${escapeAttribute(heroPath)}" alt="${escapeAttribute(item.title)}" />${heroBlurb ? `
+      <figcaption class="hero-caption" id="previewHeroCaption">${escapeHtml(heroBlurb)}</figcaption>` : ""}
+    </figure>
     <div class="post-body" id="previewBody">
       ${item.bodyHtml}
     </div>
@@ -1062,6 +1315,7 @@ ${cards || emptyState}
     const title = previewDocument.getElementById("previewTitle") || previewDocument.querySelector("h1");
     const deck = previewDocument.getElementById("previewDeck") || previewDocument.querySelector(".deck");
     const hero = previewDocument.getElementById("previewHero") || previewDocument.querySelector(".hero");
+    const heroFigure = previewDocument.getElementById("previewHeroFigure") || previewDocument.querySelector(".hero-figure");
     const body = previewDocument.getElementById("previewBody") || previewDocument.querySelector(".post-body");
     const navRoot = previewDocument.querySelector("[data-site-nav]");
 
@@ -1084,6 +1338,22 @@ ${cards || emptyState}
       hero.setAttribute("src", heroPath);
       hero.setAttribute("alt", item.title);
     }
+    if (heroFigure) {
+      heroFigure.id = "previewHeroFigure";
+      let heroCaption = previewDocument.getElementById("previewHeroCaption") || heroFigure.querySelector(".hero-caption");
+      const heroBlurb = (item.heroBlurb || "").trim();
+      if (heroBlurb) {
+        if (!heroCaption) {
+          heroCaption = previewDocument.createElement("figcaption");
+          heroCaption.className = "hero-caption";
+          heroCaption.id = "previewHeroCaption";
+          heroFigure.appendChild(heroCaption);
+        }
+        heroCaption.textContent = heroBlurb;
+      } else if (heroCaption) {
+        heroCaption.remove();
+      }
+    }
     if (body) {
       body.id = "previewBody";
       body.innerHTML = item.bodyHtml;
@@ -1094,6 +1364,12 @@ ${cards || emptyState}
         previewDocument.defaultView.renderSiteNav(navRoot);
       }
     }
+    if (previewDocument.defaultView && typeof previewDocument.defaultView.initializePostAlbums === "function") {
+      previewDocument.defaultView.initializePostAlbums();
+    }
+    if (previewDocument.defaultView && typeof previewDocument.defaultView.initializeImageLightbox === "function") {
+      previewDocument.defaultView.initializeImageLightbox();
+    }
   }
 
   function getNavSection(item) {
@@ -1103,6 +1379,30 @@ ${cards || emptyState}
     return item.navSection === "engineering tips" || item.slug === "engineering_tips"
       ? "engineering-tips"
       : "posts";
+  }
+
+  function getHeroImageBlurb(heroPath) {
+    if (!heroPath) {
+      return "";
+    }
+
+    const normalizedHeroPath = heroPath.replace(/^\.?\.\//, "");
+    const heroFileName = normalizedHeroPath.split("/").pop();
+    const entries = getAllImageEntries();
+
+    for (const entry of entries) {
+      const entryPath = entry.relativePath.replace(/^\.?\.\//, "");
+      if (entryPath === normalizedHeroPath || entryPath.replace(/^\.\.\//, "") === normalizedHeroPath) {
+        return (entry.blurb || "").trim();
+      }
+      if (heroFileName && entry.name === heroFileName) {
+        return (entry.blurb || "").trim();
+      }
+    }
+
+    return loadedPostRef && loadedPostRef.item && loadedPostRef.item.image === normalizedHeroPath
+      ? ((loadedPostRef.item.heroBlurb || "").trim())
+      : "";
   }
 
   async function resolvePreviewTemplatePath(item) {
@@ -1297,6 +1597,22 @@ ${cards || emptyState}
 
   function refreshPendingImagePaths() {
     pendingImages = pendingImages.map((entry) => {
+      if (entry.kind === "album") {
+        return {
+          ...entry,
+          images: entry.images.map((image) => {
+            const nextPath = getPendingImagePath(image.name);
+            if (heroImagePath === image.relativePath) {
+              heroImagePath = nextPath;
+            }
+            return {
+              ...image,
+              relativePath: nextPath
+            };
+          })
+        };
+      }
+
       const nextPath = getPendingImagePath(entry.name);
       if (heroImagePath === entry.relativePath) {
         heroImagePath = nextPath;
