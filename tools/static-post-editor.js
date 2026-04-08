@@ -42,6 +42,9 @@
   let previewTimer = null;
   let previewScrollY = 0;
   let previewRenderVersion = 0;
+  let previewHeroObjectUrl = "";
+  const SUPPORTED_IMAGE_EXTENSIONS = [".jpg", ".jpeg", ".png", ".gif", ".webp", ".jfif", ".bmp", ".svg", ".avif"];
+  const SUPPORTED_VIDEO_EXTENSIONS = [".mp4", ".webm", ".mov"];
 
   initializeSavedRepoHandle();
   updateDraftBanner();
@@ -147,7 +150,7 @@
       return;
     }
 
-    const files = Array.from(event.clipboardData.files || []).filter((file) => file.type.startsWith("image/"));
+    const files = Array.from(event.clipboardData.files || []).filter(isSupportedMediaFile);
     if (!files.length) {
       return;
     }
@@ -255,9 +258,9 @@
       const imagesFolder = `images/${slug}`;
       const savedImages = await saveImages(imagesFolder, pendingImages);
       const existingHero = loadedPostRef && loadedPostRef.item.slug === slug ? loadedPostRef.item.image : null;
-      const resolvedHero = resolveHeroImagePath(slug);
-      const heroImage = resolvedHero || savedImages[0] || existingHero || "temp/Bend_Lines.jfif";
-      const heroBlurb = getHeroImageBlurb(heroImage);
+      const heroAsset = await resolveHeroAsset({ slug, folderPath: imagesFolder });
+      const heroImage = heroAsset.image || savedImages[0] || existingHero || "temp/Bend_Lines.jfif";
+      const heroBlurb = getHeroImageBlurb(heroAsset.heroSource || heroImage);
 
       const item = {
         slug,
@@ -267,6 +270,7 @@
         summary,
         tags,
         image: heroImage,
+        heroSource: heroAsset.heroSource,
         heroBlurb,
         path: pagePath,
         navSection,
@@ -301,28 +305,216 @@
       const visibilityLine = published
         ? "Published on posts.html"
         : "Unpublished from posts.html";
-      setStatus(`Saved ${pagePath}\nSaved at ${savedAt}\n${visibilityLine}\nUpdated data/content-index.json\nUpdated posts.html and index.html\nSaved ${savedImages.length} new image(s) in ${imagesFolder}/`);
+      setStatus(`Saved ${pagePath}\nSaved at ${savedAt}\n${visibilityLine}\nUpdated data/content-index.json\nUpdated posts.html and index.html\nSaved ${savedImages.length} new media file(s) in ${imagesFolder}/`);
     } catch (error) {
       setStatus(error.message || String(error), true);
     }
   });
 
+  function getFileExtension(name) {
+    const match = /\.([^.]+)$/.exec(name || "");
+    return match ? `.${match[1].toLowerCase()}` : "";
+  }
+
+  function getMediaKindFromFile(file) {
+    if (!file) {
+      return "";
+    }
+
+    const type = (file.type || "").toLowerCase();
+    const extension = getFileExtension(file.name || "");
+    if (type.startsWith("image/") || SUPPORTED_IMAGE_EXTENSIONS.includes(extension)) {
+      return "image";
+    }
+    if (type.startsWith("video/") || SUPPORTED_VIDEO_EXTENSIONS.includes(extension)) {
+      return "video";
+    }
+    return "";
+  }
+
+  function getMediaKindFromPath(path) {
+    const extension = getFileExtension(path || "");
+    if (SUPPORTED_IMAGE_EXTENSIONS.includes(extension)) {
+      return "image";
+    }
+    if (SUPPORTED_VIDEO_EXTENSIONS.includes(extension)) {
+      return "video";
+    }
+    return "";
+  }
+
+  function isSupportedMediaFile(file) {
+    return Boolean(getMediaKindFromFile(file));
+  }
+
+  function isSupportedAlbumFile(file) {
+    return getMediaKindFromFile(file) === "image";
+  }
+
+  function renderMediaMarkup({ path, alt, mediaKind, className = "", id = "", controls, muted = false, playsinline = true, loop = false, autoplay = false }) {
+    const classAttribute = className ? ` class="${escapeAttribute(className)}"` : "";
+    const idAttribute = id ? ` id="${escapeAttribute(id)}"` : "";
+    if (mediaKind === "video") {
+      const showControls = controls === undefined ? true : controls;
+      return `<video${classAttribute}${idAttribute} src="${escapeAttribute(path)}" aria-label="${escapeAttribute(alt)}" preload="metadata"${showControls ? " controls" : ""}${muted ? " muted" : ""}${playsinline ? " playsinline" : ""}${loop ? " loop" : ""}${autoplay ? " autoplay" : ""}></video>`;
+    }
+    return `<img${classAttribute}${idAttribute} src="${escapeAttribute(path)}" alt="${escapeAttribute(alt)}" />`;
+  }
+
+  function normalizeMediaPath(path) {
+    return (path || "").replace(/^\.?\.\//, "");
+  }
+
+  function findMediaEntryByPath(path) {
+    const normalizedPath = normalizeMediaPath(path);
+    if (!normalizedPath) {
+      return null;
+    }
+
+    return getAllImageEntries().find((entry) => normalizeMediaPath(entry.relativePath) === normalizedPath) || null;
+  }
+
+  async function getMediaFileForEntry(entry) {
+    if (!entry) {
+      return null;
+    }
+    if (entry.file) {
+      return entry.file;
+    }
+    if (!repoHandle || !entry.relativePath) {
+      return null;
+    }
+
+    try {
+      return getFileHandle(normalizeMediaPath(entry.relativePath), false).then((handle) => handle.getFile());
+    } catch {
+      return null;
+    }
+  }
+
+  function getPosterFileName(fileName) {
+    const baseName = sanitizeFileName((fileName || "hero").replace(/\.[^.]+$/, ""));
+    return `${baseName}-hero-poster.png`;
+  }
+
+  async function captureVideoPosterBlob(file) {
+    return new Promise((resolve, reject) => {
+      const video = document.createElement("video");
+      const objectUrl = URL.createObjectURL(file);
+
+      function cleanup() {
+        URL.revokeObjectURL(objectUrl);
+        video.removeAttribute("src");
+        video.load();
+      }
+
+      video.preload = "metadata";
+      video.muted = true;
+      video.playsInline = true;
+
+      video.addEventListener("loadeddata", () => {
+        try {
+          const width = video.videoWidth || 1280;
+          const height = video.videoHeight || 720;
+          const canvas = document.createElement("canvas");
+          canvas.width = width;
+          canvas.height = height;
+          const context = canvas.getContext("2d");
+          if (!context) {
+            cleanup();
+            reject(new Error("Could not create a canvas context for the hero frame."));
+            return;
+          }
+
+          context.drawImage(video, 0, 0, width, height);
+          canvas.toBlob((blob) => {
+            cleanup();
+            if (!blob) {
+              reject(new Error("Could not capture the first frame from that video."));
+              return;
+            }
+            resolve(blob);
+          }, "image/png");
+        } catch (error) {
+          cleanup();
+          reject(error);
+        }
+      }, { once: true });
+
+      video.addEventListener("error", () => {
+        cleanup();
+        reject(new Error(`Could not read the first frame of ${file.name || "that video"}.`));
+      }, { once: true });
+
+      video.src = objectUrl;
+    });
+  }
+
+  async function writeBlobFile(path, blob) {
+    const handle = await getFileHandle(path, true);
+    const writable = await handle.createWritable();
+    await writable.write(blob);
+    await writable.close();
+  }
+
+  async function resolveHeroAsset({ slug, folderPath, forPreview = false }) {
+    const resolvedHero = resolveHeroImagePath(slug);
+    const fallbackImage = loadedPostRef ? loadedPostRef.item.image : "temp/Bend_Lines.jfif";
+    const heroEntry = findMediaEntryByPath(resolvedHero || heroImagePath);
+
+    if (!heroEntry) {
+      if (previewHeroObjectUrl) {
+        URL.revokeObjectURL(previewHeroObjectUrl);
+        previewHeroObjectUrl = "";
+      }
+      return {
+        image: resolvedHero || fallbackImage,
+        heroSource: ""
+      };
+    }
+
+    const heroSource = normalizeMediaPath(heroEntry.relativePath);
+    if (heroEntry.mediaKind !== "video") {
+      if (previewHeroObjectUrl) {
+        URL.revokeObjectURL(previewHeroObjectUrl);
+        previewHeroObjectUrl = "";
+      }
+      return {
+        image: heroSource,
+        heroSource: ""
+      };
+    }
+
+    if (previewHeroObjectUrl) {
+      URL.revokeObjectURL(previewHeroObjectUrl);
+      previewHeroObjectUrl = "";
+    }
+    return {
+      image: getFirstHeroCandidatePath() || (getMediaKindFromPath(fallbackImage) === "image" ? fallbackImage : "temp/Bend_Lines.jfif"),
+      heroSource: ""
+    };
+  }
+
   function appendImages(files) {
+    const supportedFiles = files.filter(isSupportedMediaFile);
+    if (!supportedFiles.length) {
+      setStatus("No supported media files found. GIF, mp4, webm, and mov are supported.", true);
+      return;
+    }
+
     pendingImages = pendingImages.concat(
-      files.map((file) => ({
+      supportedFiles.map((file) => ({
         kind: "image",
         id: makeEntryId("image"),
         file,
+        mediaKind: getMediaKindFromFile(file),
         name: sanitizeFileName(file.name || `image-${pendingImages.length + 1}.png`),
         blurb: "",
         relativePath: getPendingImagePath(sanitizeFileName(file.name || `image-${pendingImages.length + 1}.png`))
       }))
     );
     if (!heroImagePath && pendingImages.length) {
-      const firstPendingImage = getFirstPendingImage();
-      if (firstPendingImage) {
-        heroImagePath = firstPendingImage.relativePath;
-      }
+      chooseFallbackHero();
     }
     renderImageList();
     queuePersistAndPreview();
@@ -335,14 +527,14 @@
         continue;
       }
       const file = await handle.getFile();
-      if (!file.type.startsWith("image/")) {
+      if (!isSupportedAlbumFile(file)) {
         continue;
       }
       files.push({ file, name: sanitizeFileName(name) });
     }
 
     if (!files.length) {
-      throw new Error("No image files found in that folder.");
+      throw new Error("No supported image files found in that folder.");
     }
 
     files.sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: "base" }));
@@ -356,7 +548,7 @@
         file,
         name,
         blurb: "",
-        relativePath: slug ? `images/${slug}/${name}` : `images/untitled_post/${name}`
+        relativePath: getPendingImagePath(name, sanitizeFileName(folderHandle.name || `album-${pendingImages.length + 1}`))
       }))
     };
 
@@ -374,12 +566,13 @@
     existingImages.forEach((entry) => {
       imageList.appendChild(buildImageRow({
         entry,
+        canBeHero: entry.mediaKind !== "video",
         onHero: () => {
           heroImagePath = entry.relativePath.slice(3);
           renderImageList();
           queuePersistAndPreview();
         },
-        onInsert: () => insertImageFigure(entry.name, entry.blurb, entry.relativePath),
+        onInsert: () => insertMediaFigure(entry.name, entry.blurb, entry.relativePath, entry.mediaKind),
         onCaption: (value) => {
           entry.blurb = value;
           updateDocumentImageCaptions(entry.relativePath, value);
@@ -401,6 +594,7 @@
             blurb: currentImage ? currentImage.blurb : "",
             relativePath: currentImage ? currentImage.relativePath : "",
             isAlbum: true,
+            canBeHero: true,
             canGoPrev: entry.currentIndex > 0,
             canGoNext: entry.currentIndex < entry.images.length - 1
           },
@@ -448,12 +642,13 @@
 
       imageList.appendChild(buildImageRow({
         entry,
+        canBeHero: entry.mediaKind !== "video",
         onHero: () => {
           heroImagePath = entry.relativePath;
           renderImageList();
           queuePersistAndPreview();
         },
-        onInsert: () => insertImageFigure(entry.name, entry.blurb, `../${entry.relativePath}`),
+        onInsert: () => insertMediaFigure(entry.name, entry.blurb, `../${entry.relativePath}`, entry.mediaKind),
         onCaption: (value) => {
           entry.blurb = value;
           updateDocumentImageCaptions(`../${entry.relativePath}`, value);
@@ -501,16 +696,21 @@
     const hero = document.createElement("button");
     hero.type = "button";
     hero.textContent = "H";
-    hero.title = "Set this image as the page hero image";
+    hero.title = entry.canBeHero === false
+      ? "Videos can be inserted in the post body, but only images and GIFs can be hero media"
+      : "Set this media as the page hero image";
     hero.className = `hero-toggle${isHeroPath(entry.relativePath) ? " active" : ""}`;
-    hero.addEventListener("click", onHero);
+    hero.disabled = entry.canBeHero === false;
+    if (entry.canBeHero !== false) {
+      hero.addEventListener("click", onHero);
+    }
 
     const insert = document.createElement("button");
     insert.type = "button";
     insert.textContent = entry.isAlbum ? "insert album" : "insert";
     insert.title = entry.isAlbum
       ? "Insert this album into the document body"
-      : "Insert this image into the document body as a centered figure";
+      : "Insert this media into the document body as a centered figure";
     insert.addEventListener("click", onInsert);
 
     const remove = document.createElement("button");
@@ -572,16 +772,17 @@
     }
   }
 
-  function insertImageFigure(fileName, blurb, relativePath) {
+  function insertMediaFigure(fileName, blurb, relativePath, mediaKind) {
     const slug = slugify(slugInput.value.trim() || titleInput.value.trim());
     if (!slug && !relativePath) {
-      setStatus("Set the title or slug before inserting an image.", true);
+      setStatus("Set the title or slug before inserting media.", true);
       return;
     }
 
     const alt = blurb || titleInput.value.trim() || fileName;
     const path = relativePath || `../images/${slug}/${fileName}`;
-    const figureHtml = `<p></p><figure class="post-image"><img src="${escapeAttribute(path)}" alt="${escapeAttribute(alt)}" />${blurb ? `<figcaption>${escapeHtml(blurb)}</figcaption>` : ""}</figure><p></p>`;
+    const kind = mediaKind || getMediaKindFromPath(path) || "image";
+    const figureHtml = `<p></p><figure class="post-image" data-media-kind="${escapeAttribute(kind)}">${renderMediaMarkup({ path, alt, mediaKind: kind, className: kind === "video" ? "post-media-video" : "" })}${blurb ? `<figcaption>${escapeHtml(blurb)}</figcaption>` : ""}</figure><p></p>`;
     editor.focus();
     document.execCommand("insertHTML", false, figureHtml);
     cleanupEditorMarkup();
@@ -611,6 +812,47 @@
     queuePersistAndPreview();
   }
 
+  function loadAlbumsFromEditorBody() {
+    const albums = [];
+
+    editor.querySelectorAll("figure.post-album").forEach((figure, index) => {
+      const itemNodes = Array.from(figure.querySelectorAll(".album-item"));
+      if (!itemNodes.length) {
+        return;
+      }
+
+      const images = itemNodes.map((node, itemIndex) => {
+        const src = node.dataset.src || "";
+        const relativePath = normalizeMediaPath(src);
+        const name = relativePath.split("/").pop() || `album-image-${itemIndex + 1}`;
+        return {
+          name,
+          blurb: node.dataset.blurb || "",
+          relativePath
+        };
+      }).filter((image) => image.relativePath);
+
+      if (!images.length) {
+        return;
+      }
+
+      let currentIndex = Number(figure.dataset.index || "0");
+      if (!Number.isFinite(currentIndex) || currentIndex < 0 || currentIndex >= images.length) {
+        currentIndex = 0;
+      }
+
+      albums.push({
+        kind: "album",
+        id: figure.dataset.albumId || makeEntryId(`album-loaded-${index + 1}`),
+        name: images[0].relativePath.split("/").slice(0, -1).join("/").split("/").pop() || `album-${index + 1}`,
+        currentIndex,
+        images
+      });
+    });
+
+    return albums;
+  }
+
   async function loadPostIntoEditor(item) {
     titleInput.value = item.title;
     slugInput.value = item.slug;
@@ -623,9 +865,12 @@
     editor.innerHTML = sanitizeEditorHtml(item.bodyHtml || "<p></p>");
     loadedPostRef = { item };
     loadedPostLabel.textContent = `loaded: ${item.slug}`;
-    pendingImages = [];
+    pendingImages = loadAlbumsFromEditorBody();
     existingImages = await loadExistingImages(item);
-    heroImagePath = item.image || "";
+    heroImagePath = item.heroSource || item.image || "";
+    if (getMediaKindFromPath(heroImagePath) === "video") {
+      chooseFallbackHero();
+    }
     cleanupEditorMarkup();
     renderImageList();
     renderPreview();
@@ -643,6 +888,11 @@
     }
 
     const captionMap = getExistingImageCaptions();
+    const albumPaths = new Set(
+      pendingImages
+        .filter((entry) => entry.kind === "album")
+        .flatMap((entry) => entry.images.map((image) => image.relativePath))
+    );
     try {
       const folderHandle = await ensureDirectory(folderPath, false);
       const items = [];
@@ -651,9 +901,21 @@
           continue;
         }
         const imagePath = `${folderPath}/${name}`;
+        const file = await handle.getFile();
+        const mediaKind = getMediaKindFromFile(file);
+        if (!mediaKind) {
+          continue;
+        }
+        if (item.heroSource && item.image && imagePath === item.image) {
+          continue;
+        }
+        if (albumPaths.has(imagePath)) {
+          continue;
+        }
         items.push({
           name,
           relativePath: `../${imagePath}`,
+          mediaKind,
           isHero: imagePath === item.image,
           blurb: captionMap[`../${imagePath}`] || (imagePath === item.image ? (item.heroBlurb || "") : "")
         });
@@ -670,12 +932,24 @@
       return [];
     }
 
-    const folderHandle = await ensureDirectory(folderPath, true);
     const savedPaths = [];
 
     for (const entry of images) {
-      const albumImages = entry.kind === "album" ? entry.images : [entry];
-      for (const image of albumImages) {
+      if (entry.kind === "album") {
+        const albumFolderPath = `${folderPath}/${sanitizeFileName(entry.name || "album")}`;
+        const albumFolderHandle = await ensureDirectory(albumFolderPath, true);
+        for (const image of entry.images) {
+          const fileHandle = await albumFolderHandle.getFileHandle(image.name, { create: true });
+          const writable = await fileHandle.createWritable();
+          await writable.write(await image.file.arrayBuffer());
+          await writable.close();
+          savedPaths.push(`${albumFolderPath}/${image.name}`);
+        }
+        continue;
+      }
+
+      const folderHandle = await ensureDirectory(folderPath, true);
+      for (const image of [entry]) {
         const fileHandle = await folderHandle.getFileHandle(image.name, { create: true });
         const writable = await fileHandle.createWritable();
         await writable.write(await image.file.arrayBuffer());
@@ -723,7 +997,7 @@
     return current;
   }
 
-  function buildCurrentItem() {
+  async function buildCurrentItem() {
     const title = titleInput.value.trim();
     const slug = slugify(slugInput.value.trim() || title);
     const date = dateInput.value;
@@ -733,8 +1007,8 @@
     const navSection = navSectionInput.value.trim() || "posts";
     const fallbackImage = loadedPostRef ? loadedPostRef.item.image : "temp/Bend_Lines.jfif";
     const bodyHtml = safeBodyHtml();
-    const resolvedHero = resolveHeroImagePath(slug);
-    const image = resolvedHero || fallbackImage;
+    const heroAsset = await resolveHeroAsset({ slug, forPreview: true });
+    const image = heroAsset.image || fallbackImage;
 
     return {
       slug,
@@ -744,7 +1018,8 @@
       summary: summary || "Preview summary.",
       tags,
       image,
-      heroBlurb: getHeroImageBlurb(image),
+      heroSource: heroAsset.heroSource,
+      heroBlurb: getHeroImageBlurb(heroAsset.heroSource || image),
       path: `posts/${slug || "untitled_post"}.html`,
       navSection,
       bodyHtml
@@ -766,7 +1041,7 @@
     }
 
     const renderVersion = ++previewRenderVersion;
-    const item = buildCurrentItem();
+    const item = await buildCurrentItem();
     const templatePath = await resolvePreviewTemplatePath(item);
     if (renderVersion !== previewRenderVersion) {
       return;
@@ -860,7 +1135,7 @@
     navSectionInput.value = draft.navSection || "posts";
     editor.innerHTML = sanitizeEditorHtml(draft.bodyHtml || "<p></p>");
     heroImagePath = draft.heroImagePath || "";
-    pendingImages = [];
+    pendingImages = loadAlbumsFromEditorBody();
 
     if (repoHandle && draft.loadedPostSlug) {
       contentIndexCache = contentIndexCache || await readJson("data/content-index.json");
@@ -954,8 +1229,8 @@
   }
 
   function updateDocumentImageCaptions(relativePath, blurb) {
-    editor.querySelectorAll(`figure.post-image img[src="${cssEscape(relativePath)}"]`).forEach((image) => {
-      const figure = image.closest("figure");
+    editor.querySelectorAll(`figure.post-image img[src="${cssEscape(relativePath)}"], figure.post-image video[src="${cssEscape(relativePath)}"]`).forEach((media) => {
+      const figure = media.closest("figure");
       let caption = figure.querySelector("figcaption");
       if (blurb) {
         if (!caption) {
@@ -970,8 +1245,8 @@
   }
 
   function removeImageFromDocument(relativePath) {
-    editor.querySelectorAll(`figure.post-image img[src="${cssEscape(relativePath)}"]`).forEach((image) => {
-      const figure = image.closest("figure");
+    editor.querySelectorAll(`figure.post-image img[src="${cssEscape(relativePath)}"], figure.post-image video[src="${cssEscape(relativePath)}"]`).forEach((media) => {
+      const figure = media.closest("figure");
       if (figure) {
         figure.remove();
       }
@@ -1031,18 +1306,7 @@
   }
 
   function chooseFallbackHero() {
-    if (existingImages.length) {
-      heroImagePath = existingImages[0].relativePath.slice(3);
-      return;
-    }
-    if (pendingImages.length) {
-      const firstPendingImage = getFirstPendingImage();
-      if (firstPendingImage) {
-        heroImagePath = firstPendingImage.relativePath;
-        return;
-      }
-    }
-    heroImagePath = "";
+    heroImagePath = getFirstHeroCandidatePath() || "";
   }
 
   function getFirstPendingImage() {
@@ -1058,6 +1322,27 @@
       }
     }
     return null;
+  }
+
+  function getFirstHeroCandidatePath() {
+    const firstExistingHero = existingImages.find((entry) => entry.mediaKind !== "video" && entry.relativePath);
+    if (firstExistingHero) {
+      return firstExistingHero.relativePath.slice(3);
+    }
+
+    for (const entry of pendingImages) {
+      if (entry.kind === "album") {
+        if (entry.images && entry.images.length) {
+          return entry.images[0].relativePath;
+        }
+        continue;
+      }
+      if (entry.mediaKind !== "video" && entry.relativePath) {
+        return entry.relativePath;
+      }
+    }
+
+    return "";
   }
 
   function getAllImageEntries() {
@@ -1122,7 +1407,7 @@
     const cards = visibleItems.map((item) => {
       const meta = (item.tags || []).map((tag) => `<span>${escapeHtml(tag)}</span>`).join("");
       return `      <a class="${cardClass}" href="${escapeAttribute(item.path)}" data-date="${escapeAttribute(item.date)}">
-        <img src="${escapeAttribute(item.image)}" alt="${escapeAttribute(item.title)}" />
+        ${renderMediaMarkup({ path: item.image, alt: item.title, mediaKind: getMediaKindFromPath(item.image) || "image", className: "post-card-media", muted: true })}
         <div>
           <div class="${dateClass}">${escapeHtml(item.date)}</div>
           <h2>${escapeHtml(item.title)}</h2>
@@ -1176,12 +1461,14 @@
       border-bottom: 1px solid var(--line);
       align-items: start;
     }
-    .${cardClass} img {
+    .${cardClass} img,
+    .${cardClass} video {
       width: 100%;
       aspect-ratio: 4 / 3;
       object-fit: cover;
       display: block;
       border: 1px solid var(--line);
+      pointer-events: none;
     }
     .${dateClass} { color: var(--accent); font-size: 0.95rem; margin-bottom: 0.5rem; }
     .${cardClass} h2 { margin: 0 0 0.5rem 0; font-size: 1.4rem; font-weight: normal; }
@@ -1240,6 +1527,7 @@ ${cards || emptyState}
     const heroPath = item.image.startsWith("../") ? item.image : `../${item.image}`;
     const navSection = getNavSection(item);
     const heroBlurb = (item.heroBlurb || "").trim();
+    const heroKind = getMediaKindFromPath(heroPath) || "image";
 
     return `<!DOCTYPE html>
 <html lang="en">
@@ -1271,7 +1559,8 @@ ${cards || emptyState}
       margin: 2rem auto;
       text-align: center;
     }
-    .post-image img {
+    .post-image img,
+    .post-image video {
       display: block;
       width: auto;
       max-width: 100%;
@@ -1294,7 +1583,7 @@ ${cards || emptyState}
     <h1 id="previewTitle">${escapeHtml(item.title)}</h1>
     <p class="deck" id="previewDeck">${escapeHtml(item.summary)}</p>
     <figure class="hero-figure" id="previewHeroFigure">
-      <img class="hero" id="previewHero" src="${escapeAttribute(heroPath)}" alt="${escapeAttribute(item.title)}" />${heroBlurb ? `
+      ${renderMediaMarkup({ path: heroPath, alt: item.title, mediaKind: heroKind, className: heroKind === "video" ? "hero hero-video" : "hero", id: "previewHero", muted: heroKind === "video" })}${heroBlurb ? `
       <figcaption class="hero-caption" id="previewHeroCaption">${escapeHtml(heroBlurb)}</figcaption>` : ""}
     </figure>
     <div class="post-body" id="previewBody">
@@ -1310,11 +1599,11 @@ ${cards || emptyState}
     const metaLine = [item.date].concat(item.tags || []).join(" | ");
     const heroPath = item.image.startsWith("../") ? item.image : `../${item.image}`;
     const navSection = getNavSection(item);
+    const heroKind = getMediaKindFromPath(heroPath) || "image";
 
     const meta = previewDocument.getElementById("previewMeta") || previewDocument.querySelector(".eyebrow");
     const title = previewDocument.getElementById("previewTitle") || previewDocument.querySelector("h1");
     const deck = previewDocument.getElementById("previewDeck") || previewDocument.querySelector(".deck");
-    const hero = previewDocument.getElementById("previewHero") || previewDocument.querySelector(".hero");
     const heroFigure = previewDocument.getElementById("previewHeroFigure") || previewDocument.querySelector(".hero-figure");
     const body = previewDocument.getElementById("previewBody") || previewDocument.querySelector(".post-body");
     const navRoot = previewDocument.querySelector("[data-site-nav]");
@@ -1333,26 +1622,10 @@ ${cards || emptyState}
       deck.id = "previewDeck";
       deck.textContent = item.summary;
     }
-    if (hero) {
-      hero.id = "previewHero";
-      hero.setAttribute("src", heroPath);
-      hero.setAttribute("alt", item.title);
-    }
     if (heroFigure) {
       heroFigure.id = "previewHeroFigure";
-      let heroCaption = previewDocument.getElementById("previewHeroCaption") || heroFigure.querySelector(".hero-caption");
       const heroBlurb = (item.heroBlurb || "").trim();
-      if (heroBlurb) {
-        if (!heroCaption) {
-          heroCaption = previewDocument.createElement("figcaption");
-          heroCaption.className = "hero-caption";
-          heroCaption.id = "previewHeroCaption";
-          heroFigure.appendChild(heroCaption);
-        }
-        heroCaption.textContent = heroBlurb;
-      } else if (heroCaption) {
-        heroCaption.remove();
-      }
+      heroFigure.innerHTML = `${renderMediaMarkup({ path: heroPath, alt: item.title, mediaKind: heroKind, className: heroKind === "video" ? "hero hero-video" : "hero", id: "previewHero", muted: heroKind === "video" })}${heroBlurb ? `<figcaption class="hero-caption" id="previewHeroCaption">${escapeHtml(heroBlurb)}</figcaption>` : ""}`;
     }
     if (body) {
       body.id = "previewBody";
@@ -1476,7 +1749,7 @@ ${cards || emptyState}
       const grid = existingGrid || doc.createElement("div");
       grid.className = "grid";
       grid.innerHTML = visibleItems.map((item) => `    <div class="cell img-cell">
-      <img src="${escapeAttribute(item.image)}" alt="${escapeAttribute(item.title)}">
+      ${renderMediaMarkup({ path: item.image, alt: item.title, mediaKind: getMediaKindFromPath(item.image) || "image", className: "home-card-media", muted: true })}
       <div class="overlay-title">${escapeHtml(item.title)}</div>
       <div class="overlay-desc">${escapeHtml(item.summary)}</div>
       <a href="${escapeAttribute(item.path)}" aria-label="${escapeAttribute(item.title)}"></a>
@@ -1590,9 +1863,11 @@ ${cards || emptyState}
     });
   }
 
-  function getPendingImagePath(fileName) {
+  function getPendingImagePath(fileName, albumName = "") {
     const slug = slugify(slugInput.value.trim() || titleInput.value.trim());
-    return slug ? `images/${slug}/${fileName}` : `images/untitled_post/${fileName}`;
+    const baseFolder = slug ? `images/${slug}` : "images/untitled_post";
+    const albumSegment = albumName ? `/${sanitizeFileName(albumName)}` : "";
+    return `${baseFolder}${albumSegment}/${fileName}`;
   }
 
   function refreshPendingImagePaths() {
@@ -1601,7 +1876,7 @@ ${cards || emptyState}
         return {
           ...entry,
           images: entry.images.map((image) => {
-            const nextPath = getPendingImagePath(image.name);
+            const nextPath = getPendingImagePath(image.name, entry.name);
             if (heroImagePath === image.relativePath) {
               heroImagePath = nextPath;
             }
@@ -1647,12 +1922,12 @@ ${cards || emptyState}
   function getExistingImageCaptions() {
     const captions = {};
     editor.querySelectorAll("figure.post-image").forEach((figure) => {
-      const image = figure.querySelector("img");
-      if (!image) {
+      const media = figure.querySelector("img, video");
+      if (!media) {
         return;
       }
       const caption = figure.querySelector("figcaption");
-      captions[image.getAttribute("src")] = caption ? caption.textContent.trim() : "";
+      captions[media.getAttribute("src")] = caption ? caption.textContent.trim() : "";
     });
     return captions;
   }

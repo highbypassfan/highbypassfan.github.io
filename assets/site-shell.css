@@ -69,6 +69,7 @@ a {
 
 .hero,
 .post-image img,
+.post-image video,
 .post-album-image {
   cursor: zoom-in;
 }
@@ -81,11 +82,13 @@ a {
 
 .post-album-image {
   display: block;
-  width: auto;
-  max-width: 100%;
-  max-height: min(calc((100vw - 2rem) * 0.75), 675px);
+  width: min(100%, 900px);
+  aspect-ratio: 4 / 3;
   margin: 0 auto;
   border: 1px solid var(--line);
+  object-fit: contain;
+  object-position: center;
+  background: #050505;
 }
 
 .post-album-meta {
@@ -139,7 +142,8 @@ a {
   display: flex;
 }
 
-.image-lightbox img {
+.image-lightbox img,
+.image-lightbox video {
   display: block;
   max-width: min(96vw, 1800px);
   max-height: 92vh;
@@ -147,6 +151,11 @@ a {
   height: auto;
   border: 1px solid rgba(255, 255, 255, 0.25);
   background: #050505;
+}
+
+.image-lightbox video {
+  width: min(96vw, 1800px);
+  height: auto;
 }
 
 .image-lightbox-close {

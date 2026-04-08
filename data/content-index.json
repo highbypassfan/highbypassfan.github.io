@@ -1,6 +1,20 @@
 {
   "posts": [
     {
+      "slug": "the_tube",
+      "title": "the tube",
+      "date": "2026-04-08",
+      "published": true,
+      "summary": "You must choose wisely.",
+      "tags": [],
+      "image": "images/the_tube/Bend_Lines.jfif",
+      "heroSource": "",
+      "heroBlurb": "",
+      "path": "posts/the_tube.html",
+      "navSection": "posts",
+      "bodyHtml": "<p>testing!</p><p><br></p><p></p><p></p><p></p><p></p><p><br></p><p></p><p></p><p></p><p></p><figure class=\"post-image\" data-media-kind=\"video\"><video class=\"post-media-video\" src=\"../images/the_tube/so_true.mp4\" aria-label=\"the tube\" preload=\"metadata\" playsinline=\"\"></video><figcaption>the tube</figcaption></figure><p><br></p><p><br></p><p></p><p></p><figure class=\"post-album\" data-album-id=\"album-1775610765625-yl59on\" data-index=\"0\"><img class=\"post-album-image\" src=\"../images/the_tube/Bend_Lines.jfif\" alt=\"the tube\"><div class=\"post-album-meta\"><button class=\"album-nav prev\" type=\"button\">&lt;</button><figcaption class=\"post-album-caption\"></figcaption><button class=\"album-nav next\" type=\"button\">&gt;</button></div><div class=\"album-data\" hidden=\"\"><span class=\"album-item\" data-src=\"../images/the_tube/Bend_Lines.jfif\" data-alt=\"the tube\" data-blurb=\"\"></span><span class=\"album-item\" data-src=\"../images/the_tube/Toolbox_below.png\" data-alt=\"the tube\" data-blurb=\"\"></span><span class=\"album-item\" data-src=\"../images/the_tube/toolbox_delivered.webp\" data-alt=\"the tube\" data-blurb=\"\"></span><span class=\"album-item\" data-src=\"../images/the_tube/toolbox_mount.jpg\" data-alt=\"the tube\" data-blurb=\"\"></span><span class=\"album-item\" data-src=\"../images/the_tube/toolbox_mounted.webp\" data-alt=\"the tube\" data-blurb=\"\"></span><span class=\"album-item\" data-src=\"../images/the_tube/Toolbox_SM.PNG\" data-alt=\"the tube\" data-blurb=\"\"></span><span class=\"album-item\" data-src=\"../images/the_tube/Toolbox_SM2.PNG\" data-alt=\"the tube\" data-blurb=\"\"></span><span class=\"album-item\" data-src=\"../images/the_tube/Toolbox_SM3.PNG\" data-alt=\"the tube\" data-blurb=\"\"></span><span class=\"album-item\" data-src=\"../images/the_tube/Toolbox.PNG\" data-alt=\"the tube\" data-blurb=\"\"></span></div></figure>"
+    },
+    {
       "slug": "reading_list",
       "title": "Reading List",
       "date": "2026-04-07",
@@ -11,7 +25,7 @@
       "heroBlurb": "They'll be waiting for awhile!",
       "path": "posts/reading_list.html",
       "navSection": "posts",
-      "bodyHtml": "<p><br></p><p>Engineering:</p><p><!-- obsidian --></p><p><a href=\"https://guzey.com/follow-up/\" class=\"external-link\" target=\"_blank\" rel=\"noopener nofollow\">https://guzey.com/follow-up/</a></p><p><br></p><p></p><p><br></p><p>a</p>"
+      "bodyHtml": "<p><br></p><p>Personal management:</p><p><!-- obsidian --></p><p><a href=\"https://guzey.com/follow-up/\" class=\"external-link\" target=\"_blank\" rel=\"noopener nofollow\">https://guzey.com/follow-up/</a></p><p><br></p><p></p><p><!-- obsidian --></p><p><a href=\"https://www.youtube.com/watch?v=4jgTCayWlwc\" class=\"external-link\" target=\"_blank\" rel=\"noopener nofollow\">https://www.youtube.com/watch?v=4jgTCayWlwc</a> boe jarnard</p><p>a</p>"
     },
     {
       "slug": "engineering_tips",

@@ -61,11 +61,13 @@
       aspect-ratio: 4 / 3;
     }
 
-    .img-cell img {
+    .img-cell img,
+    .img-cell video {
       width: 100%;
       height: 100%;
       object-fit: cover;
       display: block;
+      pointer-events: none;
       transition: filter 0.3s ease;
     }
 
@@ -94,7 +96,8 @@
       font-weight: normal;
     }
 
-    .img-cell:hover img {
+    .img-cell:hover img,
+    .img-cell:hover video {
       filter: brightness(60%);
     }
 
@@ -173,25 +176,33 @@
   </section>
 
   <div class="grid">    <div class="cell img-cell">
-      <img src="images/reading_list/Steel.png" alt="Reading List">
+      <img class="home-card-media" src="images/the_tube/Bend_Lines.jfif" alt="the tube">
+      <div class="overlay-title">the tube</div>
+      <div class="overlay-desc">You must choose wisely.</div>
+      <a href="posts/the_tube.html" aria-label="the tube"></a>
+    </div>
+
+    <div class="cell img-cell">
+      <img class="home-card-media" src="images/reading_list/Steel.png" alt="Reading List">
       <div class="overlay-title">Reading List</div>
       <div class="overlay-desc">Articles and resources I have found useful.</div>
       <a href="posts/reading_list.html" aria-label="Reading List"></a>
     </div>
 
     <div class="cell img-cell">
-      <img src="images/engineering_tips/self_portrait.png" alt="Engineering Tips">
+      <img class="home-card-media" src="images/engineering_tips/self_portrait.png" alt="Engineering Tips">
       <div class="overlay-title">Engineering Tips</div>
       <div class="overlay-desc">For people interested in solving problems.</div>
       <a href="posts/engineering_tips.html" aria-label="Engineering Tips"></a>
     </div>
 
     <div class="cell img-cell">
-      <img src="images/test_post_1/hawkeye.jpg" alt="Test Post 1">
+      <img class="home-card-media" src="images/test_post_1/hawkeye.jpg" alt="Test Post 1">
       <div class="overlay-title">Test Post 1</div>
       <div class="overlay-desc">Test</div>
       <a href="posts/test_post_1.html" aria-label="Test Post 1"></a>
     </div></div>
+
 
 
 

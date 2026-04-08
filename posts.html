@@ -39,12 +39,14 @@
       border-bottom: 1px solid var(--line);
       align-items: start;
     }
-    .post-card img {
+    .post-card img,
+    .post-card video {
       width: 100%;
       aspect-ratio: 4 / 3;
       object-fit: cover;
       display: block;
       border: 1px solid var(--line);
+      pointer-events: none;
     }
     .post-date { color: var(--accent); font-size: 0.95rem; margin-bottom: 0.5rem; }
     .post-card h2 { margin: 0 0 0.5rem 0; font-size: 1.4rem; font-weight: normal; }
@@ -66,8 +68,20 @@
     </div>
 
     <section class="post-list" id="postList">
+      <a class="post-card" href="posts/the_tube.html" data-date="2026-04-08">
+        <img class="post-card-media" src="images/the_tube/Bend_Lines.jfif" alt="the tube" />
+        <div>
+          <div class="post-date">2026-04-08</div>
+          <h2>the tube</h2>
+          <p>You must choose wisely.</p>
+          <div class="post-meta">
+            
+          </div>
+        </div>
+      </a>
+
       <a class="post-card" href="posts/reading_list.html" data-date="2026-04-07">
-        <img src="images/reading_list/Steel.png" alt="Reading List" />
+        <img class="post-card-media" src="images/reading_list/Steel.png" alt="Reading List" />
         <div>
           <div class="post-date">2026-04-07</div>
           <h2>Reading List</h2>
@@ -79,7 +93,7 @@
       </a>
 
       <a class="post-card" href="posts/engineering_tips.html" data-date="2026-04-06">
-        <img src="images/engineering_tips/self_portrait.png" alt="Engineering Tips" />
+        <img class="post-card-media" src="images/engineering_tips/self_portrait.png" alt="Engineering Tips" />
         <div>
           <div class="post-date">2026-04-06</div>
           <h2>Engineering Tips</h2>
@@ -91,7 +105,7 @@
       </a>
 
       <a class="post-card" href="posts/test_post_1.html" data-date="2026-04-04">
-        <img src="images/test_post_1/hawkeye.jpg" alt="Test Post 1" />
+        <img class="post-card-media" src="images/test_post_1/hawkeye.jpg" alt="Test Post 1" />
         <div>
           <div class="post-date">2026-04-04</div>
           <h2>Test Post 1</h2>

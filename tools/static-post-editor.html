@@ -176,7 +176,8 @@
       padding: 0.75rem;
       max-width: 100%;
     }
-    .editor .post-image img {
+    .editor .post-image img,
+    .editor .post-image video {
       display: block;
       max-width: 100%;
       margin: 0 auto;
@@ -197,9 +198,13 @@
     }
     .editor .post-album-image {
       display: block;
-      max-width: 100%;
+      width: min(100%, 900px);
+      aspect-ratio: 4 / 3;
       margin: 0 auto;
       border: 1px solid var(--line);
+      object-fit: contain;
+      object-position: center;
+      background: #050505;
     }
     .editor .post-album-meta {
       display: grid;
@@ -505,14 +510,14 @@
         </div>
 
         <div class="field">
-          <label>Images</label>
-          <input id="imagePicker" type="file" accept="image/*" multiple />
+          <label>Media</label>
+          <input id="imagePicker" type="file" accept="image/*,video/mp4,video/webm,video/quicktime,.gif,.mp4,.webm,.mov" multiple />
           <div class="row" style="margin-top: 0.65rem;">
             <button id="addAlbum" type="button" title="Choose a folder of images and add it as an album">add album</button>
           </div>
           <div class="dropzone" id="dropzone">
-            paste images here with Ctrl+V, or use the file picker above.
-            the first image becomes the hero image unless you pick a different H button.
+            paste images or videos here with Ctrl+V, or use the file picker above.
+            the first media item becomes the hero unless you pick a different H button.
           </div>
           <div class="image-list" id="imageList"></div>
         </div>
@@ -539,7 +544,7 @@
         </div>
         <div id="editor" class="editor" contenteditable="true">
           <p>Paste the post body here.</p>
-          <p>Use the toolbar for headings, lists, left or centered text, bold, italic, links, undo, and inserted images.</p>
+          <p>Use the toolbar for headings, lists, left or centered text, bold, italic, links, undo, and inserted media.</p>
         </div>
         <p class="hint" id="loadedPost">loaded: new post</p>
         <div class="status" id="status">No repo folder selected yet.</div>
