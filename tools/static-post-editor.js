@@ -119,6 +119,17 @@
   });
 
   editor.addEventListener("keydown", (event) => {
+    if (event.key === "Enter" && !event.shiftKey) {
+      const mediaFigure = getSelectedMediaFigure();
+      if (mediaFigure) {
+        event.preventDefault();
+        insertParagraphAfterFigure(mediaFigure);
+        cleanupEditorMarkup();
+        queuePersistAndPreview();
+        return;
+      }
+    }
+
     if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "s") {
       event.preventDefault();
       generateButton.click();
@@ -302,7 +313,8 @@
 
       loadedPostRef = { item };
       loadedPostLabel.textContent = `loaded: ${item.slug}`;
-      pendingImages = [];
+      pendingImages = await loadAlbumsFromEditorBody();
+      pendingImages.filter((entry) => entry.kind === "album").forEach(updateAlbumInDocument);
       existingImages = await loadExistingImages(item);
       clearSavedDraft();
       updateDraftBanner();
@@ -822,7 +834,7 @@
 
     const initial = items[Math.min(album.currentIndex, items.length - 1)];
     const itemsMarkup = items.map((item) => `<span class="album-item" data-src="${escapeAttribute(item.src)}" data-alt="${escapeAttribute(item.alt)}" data-blurb="${escapeAttribute(item.blurb)}"></span>`).join("");
-    const figureHtml = `<p></p><figure class="post-album" data-album-id="${escapeAttribute(album.id)}" data-index="${Math.min(album.currentIndex, items.length - 1)}"><img class="post-album-image" src="${escapeAttribute(initial.src)}" alt="${escapeAttribute(initial.alt)}" /><div class="post-album-meta"><button class="album-nav prev" type="button"${items.length <= 1 ? " disabled" : ""}>&lt;</button><figcaption class="post-album-caption">${escapeHtml(initial.blurb)}</figcaption><button class="album-nav next" type="button"${items.length <= 1 ? " disabled" : ""}>&gt;</button></div><div class="album-data" hidden>${itemsMarkup}</div></figure><p></p>`;
+    const figureHtml = `<p></p><figure class="post-album" data-album-id="${escapeAttribute(album.id)}" data-album-name="${escapeAttribute(album.name)}" data-index="${Math.min(album.currentIndex, items.length - 1)}"><img class="post-album-image" src="${escapeAttribute(initial.src)}" alt="${escapeAttribute(initial.alt)}" /><div class="post-album-meta"><button class="album-nav prev" type="button"${items.length <= 1 ? " disabled" : ""}>&lt;</button><figcaption class="post-album-caption">${escapeHtml(initial.blurb)}</figcaption><button class="album-nav next" type="button"${items.length <= 1 ? " disabled" : ""}>&gt;</button></div><div class="album-data" hidden>${itemsMarkup}</div></figure><p></p>`;
     editor.focus();
     document.execCommand("insertHTML", false, figureHtml);
     cleanupEditorMarkup();
@@ -830,28 +842,43 @@
     queuePersistAndPreview();
   }
 
-  function loadAlbumsFromEditorBody() {
+  async function loadAlbumsFromEditorBody() {
     const albums = [];
 
-    editor.querySelectorAll("figure.post-album").forEach((figure, index) => {
+    for (const [index, figure] of Array.from(editor.querySelectorAll("figure.post-album")).entries()) {
       const itemNodes = Array.from(figure.querySelectorAll(".album-item"));
       if (!itemNodes.length) {
-        return;
+        continue;
       }
 
-      const images = itemNodes.map((node, itemIndex) => {
+      const albumName = sanitizeFileName(figure.dataset.albumName || `album-${index + 1}`);
+      const images = [];
+      for (const [itemIndex, node] of itemNodes.entries()) {
         const src = node.dataset.src || "";
-        const relativePath = normalizeMediaPath(src);
-        const name = relativePath.split("/").pop() || `album-image-${itemIndex + 1}`;
-        return {
+        const sourceRelativePath = normalizeMediaPath(src);
+        const name = sourceRelativePath.split("/").pop() || `album-image-${itemIndex + 1}`;
+        const relativePath = getPendingImagePath(name, albumName);
+        const image = {
           name,
           blurb: node.dataset.blurb || "",
-          relativePath
+          relativePath,
+          sourceRelativePath
         };
-      }).filter((image) => image.relativePath);
+
+        if (image.sourceRelativePath && repoHandle) {
+          try {
+            image.file = await getFileHandle(image.sourceRelativePath, false).then((handle) => handle.getFile());
+          } catch {
+          }
+        }
+
+        if (image.relativePath) {
+          images.push(image);
+        }
+      }
 
       if (!images.length) {
-        return;
+        continue;
       }
 
       let currentIndex = Number(figure.dataset.index || "0");
@@ -862,11 +889,11 @@
       albums.push({
         kind: "album",
         id: figure.dataset.albumId || makeEntryId(`album-loaded-${index + 1}`),
-        name: images[0].relativePath.split("/").slice(0, -1).join("/").split("/").pop() || `album-${index + 1}`,
+        name: albumName,
         currentIndex,
         images
       });
-    });
+    }
 
     return albums;
   }
@@ -883,7 +910,8 @@
     editor.innerHTML = sanitizeEditorHtml(item.bodyHtml || "<p></p>");
     loadedPostRef = { item };
     loadedPostLabel.textContent = `loaded: ${item.slug}`;
-    pendingImages = loadAlbumsFromEditorBody();
+    pendingImages = await loadAlbumsFromEditorBody();
+    pendingImages.filter((entry) => entry.kind === "album").forEach(updateAlbumInDocument);
     existingImages = await loadExistingImages(item);
     heroImagePath = item.heroSource || item.image || "";
     if (getMediaKindFromPath(heroImagePath) === "video") {
@@ -911,7 +939,7 @@
     const albumPaths = new Set(
       pendingImages
         .filter((entry) => entry.kind === "album")
-        .flatMap((entry) => entry.images.map((image) => image.relativePath))
+        .flatMap((entry) => entry.images.flatMap((image) => [image.relativePath, image.sourceRelativePath].filter(Boolean)))
     );
     try {
       const folderHandle = await ensureDirectory(folderPath, false);
@@ -959,6 +987,9 @@
         const albumFolderPath = `${folderPath}/${sanitizeFileName(entry.name || "album")}`;
         const albumFolderHandle = await ensureDirectory(albumFolderPath, true);
         for (const image of entry.images) {
+          if (!image.file) {
+            continue;
+          }
           const fileHandle = await albumFolderHandle.getFileHandle(image.name, { create: true });
           const writable = await fileHandle.createWritable();
           await writable.write(await image.file.arrayBuffer());
@@ -970,6 +1001,9 @@
 
       const folderHandle = await ensureDirectory(folderPath, true);
       for (const image of [entry]) {
+        if (!image.file) {
+          continue;
+        }
         const fileHandle = await folderHandle.getFileHandle(image.name, { create: true });
         const writable = await fileHandle.createWritable();
         await writable.write(await image.file.arrayBuffer());
@@ -1220,7 +1254,8 @@
     navSectionInput.value = draft.navSection || "posts";
     editor.innerHTML = sanitizeEditorHtml(draft.bodyHtml || "<p></p>");
     heroImagePath = draft.heroImagePath || "";
-    pendingImages = loadAlbumsFromEditorBody();
+    pendingImages = await loadAlbumsFromEditorBody();
+    pendingImages.filter((entry) => entry.kind === "album").forEach(updateAlbumInDocument);
 
     if (repoHandle && draft.loadedPostSlug) {
       contentIndexCache = contentIndexCache || await readJson("data/content-index.json");
@@ -1361,6 +1396,7 @@
     }));
 
     editor.querySelectorAll(`figure.post-album[data-album-id="${cssEscape(album.id)}"]`).forEach((figure) => {
+      figure.setAttribute("data-album-name", album.name || "album");
       figure.setAttribute("data-index", String(currentIndex));
 
       const displayImage = figure.querySelector(".post-album-image");
@@ -1481,6 +1517,37 @@
     return editor.querySelector("p") || editor;
   }
 
+  function getSelectedMediaFigure() {
+    const selection = window.getSelection();
+    if (!selection || selection.rangeCount === 0) {
+      return null;
+    }
+
+    let current = selection.getRangeAt(0).startContainer;
+    current = current && current.nodeType === Node.TEXT_NODE ? current.parentElement : current;
+    while (current && current !== editor) {
+      if (current.matches && current.matches("figure.post-image, figure.post-album")) {
+        return current;
+      }
+      current = current.parentElement;
+    }
+    return null;
+  }
+
+  function insertParagraphAfterFigure(figure) {
+    const paragraph = document.createElement("p");
+    paragraph.innerHTML = "<br>";
+    figure.insertAdjacentElement("afterend", paragraph);
+
+    const selection = window.getSelection();
+    const range = document.createRange();
+    range.setStart(paragraph, 0);
+    range.collapse(true);
+    selection.removeAllRanges();
+    selection.addRange(range);
+    editor.focus();
+  }
+
   function renderIndexPage(items) {
     const visibleItems = items.filter((item) => item.published !== false);
     const title = "Posts";
@@ -1508,7 +1575,7 @@
     }).join("\n\n");
     const emptyState = cards ? "" : "      <p class=\"hint\">No posts published yet.</p>";
 
-    return `<!DOCTYPE html>
+return `<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta name="viewport"
@@ -1516,64 +1583,8 @@
   <link rel="stylesheet" href="assets/site-shell.css" />
   <script defer src="assets/site-shell.js"></script>
   <title>${title}</title>
-  <style>
-    :root {
-      --bg: #000;
-      --fg: #fff;
-      --line: #252525;
-      --accent: #ff3b30;
-      --muted: #b8b8b8;
-    }
-    .page { max-width: 1100px; margin: 0 auto; padding: 1.5rem 1rem 4rem; }
-    .list-header { display: flex; align-items: center; justify-content: flex-end; margin-bottom: 0.5rem; }
-    .sort-toggle {
-      appearance: none;
-      border: 1px solid var(--line);
-      background: #050505;
-      color: var(--fg);
-      font: inherit;
-      width: 2.25rem;
-      height: 2.25rem;
-      padding: 0;
-      cursor: pointer;
-      display: grid;
-      place-items: center;
-    }
-    .sort-toggle:hover { border-color: var(--accent); color: var(--accent); }
-    .${listClass} { display: flex; flex-direction: column; gap: 1rem; }
-    .${cardClass} {
-      display: grid;
-      grid-template-columns: 220px minmax(0, 1fr);
-      gap: 1.25rem;
-      padding: 1rem 0;
-      border-bottom: 1px solid var(--line);
-      align-items: start;
-    }
-    .${cardClass} img,
-    .${cardClass} video,
-    .${cardClass} .post-card-media-empty {
-      width: 100%;
-      aspect-ratio: 4 / 3;
-      object-fit: cover;
-      display: block;
-      border: 1px solid var(--line);
-      pointer-events: none;
-    }
-    .${cardClass} .post-card-media-empty {
-      background: #050505;
-    }
-    .${dateClass} { color: var(--accent); font-size: 0.95rem; margin-bottom: 0.5rem; }
-    .${cardClass} h2 { margin: 0 0 0.5rem 0; font-size: 1.4rem; font-weight: normal; }
-    .${cardClass} p { margin: 0 0 0.75rem 0; color: var(--muted); line-height: 1.5; }
-    .${metaClass} { display: flex; flex-wrap: wrap; gap: 1rem; color: var(--muted); font-size: 0.95rem; }
-    .${cardClass}:hover h2 { color: var(--accent); }
-    .hint { color: var(--muted); line-height: 1.6; }
-    @media (max-width: 700px) {
-      .${cardClass} { grid-template-columns: 1fr; }
-    }
-  </style>
 </head>
-<body>
+<body class="site-posts">
   <div data-site-nav data-nav-prefix="" data-nav-section="posts"></div>
 
   <main class="page">
@@ -1621,7 +1632,7 @@ ${cards || emptyState}
     const heroBlurb = (item.heroBlurb || "").trim();
     const heroKind = heroPath ? (getMediaKindFromPath(heroPath) || "image") : "";
 
-    return `<!DOCTYPE html>
+return `<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta name="viewport"
@@ -1629,47 +1640,8 @@ ${cards || emptyState}
   <link rel="stylesheet" href="../assets/site-shell.css" />
   <script defer src="../assets/site-shell.js"></script>
   <title>${escapeHtml(item.title)}</title>
-  <style>
-    :root { --bg: #000; --fg: #fff; --line: #252525; --accent: #ff3b30; --muted: #b8b8b8; }
-    .page { max-width: 900px; margin: 0 auto; padding: 2rem 1rem 4rem; }
-    .eyebrow { color: var(--accent); margin-bottom: 0.75rem; font-size: 0.95rem; }
-    h1 { margin: 0 0 0.75rem 0; font-size: 2.2rem; font-weight: normal; letter-spacing: 0.04em; }
-    .deck { margin: 0 0 1.5rem 0; color: var(--muted); line-height: 1.6; max-width: 70ch; }
-    .hero-figure { margin: 0 0 2rem 0; }
-    .hero { width: auto; height: auto; max-width: 100%; max-height: min(60vh, calc((100vw - 2rem) * 0.75), 675px); display: block; border: 1px solid var(--line); margin: 0 auto 2rem; background: #050505; }
-    .hero-caption { margin-top: -1.3rem; color: var(--muted); font-size: 0.95rem; line-height: 1.5; text-align: center; }
-    .section { padding-top: 1rem; border-top: 1px solid var(--line); margin-top: 1rem; }
-    .section h2 { margin: 0 0 0.75rem 0; font-size: 1.25rem; font-weight: normal; color: var(--accent); }
-    .post-body p,
-    .post-body li { line-height: 1.6; }
-    .post-body ul,
-    .post-body ol { margin: 0.75rem 0 0 1.25rem; padding: 0; }
-    .align-center { text-align: center; }
-    .align-left { text-align: left; }
-    .post-image {
-      width: 100%;
-      margin: 2rem auto;
-      text-align: center;
-    }
-    .post-image img,
-    .post-image video {
-      display: block;
-      width: auto;
-      max-width: 100%;
-      height: auto;
-      max-height: min(60vh, calc((100vw - 2rem) * 0.75), 675px);
-      margin: 0 auto;
-      border: 1px solid var(--line);
-    }
-    .post-image figcaption {
-      margin-top: 0.65rem;
-      color: var(--muted);
-      font-size: 0.95rem;
-      line-height: 1.5;
-    }
-  </style>
 </head>
-<body>
+<body class="site-post-page">
   <div data-site-nav data-nav-prefix="../" data-nav-section="${navSection}"></div>
   <main class="page">
     <div class="eyebrow" id="previewMeta">${escapeHtml(metaLine)}</div>
@@ -1960,6 +1932,10 @@ ${cards || emptyState}
       }
     });
     editor.querySelectorAll("p figure.post-image").forEach((figure) => {
+      const paragraph = figure.parentElement;
+      paragraph.replaceWith(figure);
+    });
+    editor.querySelectorAll("p figure.post-album").forEach((figure) => {
       const paragraph = figure.parentElement;
       paragraph.replaceWith(figure);
     });
