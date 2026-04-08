@@ -12,7 +12,7 @@
     .eyebrow { color: var(--accent); margin-bottom: 0.75rem; font-size: 0.95rem; }
     h1 { margin: 0 0 0.75rem 0; font-size: 2.2rem; font-weight: normal; letter-spacing: 0.04em; }
     .deck { margin: 0 0 1.5rem 0; color: var(--muted); line-height: 1.6; max-width: 70ch; }
-    .hero { width: auto; max-width: 100%; max-height: min(calc((100vw - 2rem) * 0.75), 675px); display: block; border: 1px solid var(--line); margin: 0 auto 2rem; background: #050505; }
+    .hero { width: auto; height: auto; max-width: 100%; max-height: min(60vh, calc((100vw - 2rem) * 0.75), 675px); display: block; border: 1px solid var(--line); margin: 0 auto 2rem; background: #050505; }
     .section { padding-top: 1rem; border-top: 1px solid var(--line); margin-top: 1rem; }
     .section h2 { margin: 0 0 0.75rem 0; font-size: 1.25rem; font-weight: normal; color: var(--accent); }
     .post-body p,
@@ -30,7 +30,8 @@
       display: block;
       width: auto;
       max-width: 100%;
-      max-height: min(calc((100vw - 2rem) * 0.75), 675px);
+      height: auto;
+      max-height: min(60vh, calc((100vw - 2rem) * 0.75), 675px);
       margin: 0 auto;
       border: 1px solid var(--line);
     }

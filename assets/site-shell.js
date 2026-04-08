@@ -5,8 +5,8 @@
     const items = [
       { id: "home", label: "home", href: `${prefix}index.html` },
       { id: "posts", label: "posts", href: `${prefix}posts.html` },
-      { id: "engineering-tips", label: "engineering tips", href: `${prefix}posts/engineering_tips.html` },
-      { id: "datastream", label: "datastream", href: "#" }
+      { id: "reading-list", label: "reading list", href: `${prefix}posts/reading_list.html` },
+      { id: "engineering-tips", label: "engineering tips", href: `${prefix}posts/engineering_tips.html` }
     ];
 
     root.classList.add("top-nav");

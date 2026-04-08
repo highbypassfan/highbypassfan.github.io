@@ -22,9 +22,10 @@
       "summary": "Articles and resources I have found useful.",
       "tags": [],
       "image": "images/reading_list/Steel.png",
+      "heroSource": "",
       "heroBlurb": "They'll be waiting for awhile!",
       "path": "posts/reading_list.html",
-      "navSection": "posts",
+      "navSection": "reading list",
       "bodyHtml": "<p><br></p><p>Personal management:</p><p><!-- obsidian --></p><p><a href=\"https://guzey.com/follow-up/\" class=\"external-link\" target=\"_blank\" rel=\"noopener nofollow\">https://guzey.com/follow-up/</a></p><p><br></p><p></p><p><!-- obsidian --></p><p><a href=\"https://www.youtube.com/watch?v=4jgTCayWlwc\" class=\"external-link\" target=\"_blank\" rel=\"noopener nofollow\">https://www.youtube.com/watch?v=4jgTCayWlwc</a> boe jarnard</p><p>a</p>"
     },
     {
@@ -40,19 +41,6 @@
       "path": "posts/engineering_tips.html",
       "navSection": "engineering tips",
       "bodyHtml": "<p>todo</p>"
-    },
-    {
-      "slug": "test_post_1",
-      "title": "Test Post 1",
-      "date": "2026-04-04",
-      "published": true,
-      "summary": "Test",
-      "tags": [],
-      "image": "images/test_post_1/hawkeye.jpg",
-      "heroBlurb": "",
-      "path": "posts/test_post_1.html",
-      "navSection": "posts",
-      "bodyHtml": "<p></p><p></p><p></p><p></p><figure class=\"post-image\"><img src=\"../images/test_post_1/Roof.jfif\" alt=\"Test Post 1\"><figcaption>test</figcaption></figure><p>test</p><p><br></p><p><br></p><p><br></p><p>aga</p>"
     }
   ]
 }

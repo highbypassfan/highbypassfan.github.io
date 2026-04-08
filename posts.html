@@ -40,13 +40,17 @@
       align-items: start;
     }
     .post-card img,
-    .post-card video {
+    .post-card video,
+    .post-card .post-card-media-empty {
       width: 100%;
       aspect-ratio: 4 / 3;
       object-fit: cover;
       display: block;
       border: 1px solid var(--line);
       pointer-events: none;
+    }
+    .post-card .post-card-media-empty {
+      background: #050505;
     }
     .post-date { color: var(--accent); font-size: 0.95rem; margin-bottom: 0.5rem; }
     .post-card h2 { margin: 0 0 0.5rem 0; font-size: 1.4rem; font-weight: normal; }
@@ -100,18 +104,6 @@
           <p>For people interested in solving problems.</p>
           <div class="post-meta">
             <span>Advice</span>
-          </div>
-        </div>
-      </a>
-
-      <a class="post-card" href="posts/test_post_1.html" data-date="2026-04-04">
-        <img class="post-card-media" src="images/test_post_1/hawkeye.jpg" alt="Test Post 1" />
-        <div>
-          <div class="post-date">2026-04-04</div>
-          <h2>Test Post 1</h2>
-          <p>Test</p>
-          <div class="post-meta">
-            
           </div>
         </div>
       </a>

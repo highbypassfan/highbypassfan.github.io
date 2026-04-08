@@ -2,7 +2,9 @@
   const DRAFT_KEY = "static-post-editor-draft-v1";
   const LAST_REPO_NAME_KEY = "static-post-editor-last-repo-name";
   const pickRepoButton = document.getElementById("pickRepo");
+  const newPostButton = document.getElementById("newPost");
   const selectPostButton = document.getElementById("selectPost");
+  const deletePostButton = document.getElementById("deletePost");
   const generateButton = document.getElementById("generate");
   const imagePicker = document.getElementById("imagePicker");
   const addAlbumButton = document.getElementById("addAlbum");
@@ -218,6 +220,11 @@
     }
   });
 
+  newPostButton.addEventListener("click", () => {
+    resetEditorForNewPost();
+    setStatus("Started a new post draft.");
+  });
+
   selectPostButton.addEventListener("click", async () => {
     try {
       if (!repoHandle) {
@@ -259,7 +266,7 @@
       const savedImages = await saveImages(imagesFolder, pendingImages);
       const existingHero = loadedPostRef && loadedPostRef.item.slug === slug ? loadedPostRef.item.image : null;
       const heroAsset = await resolveHeroAsset({ slug, folderPath: imagesFolder });
-      const heroImage = heroAsset.image || savedImages[0] || existingHero || "temp/Bend_Lines.jfif";
+      const heroImage = heroAsset.image || "";
       const heroBlurb = getHeroImageBlurb(heroAsset.heroSource || heroImage);
 
       const item = {
@@ -306,6 +313,21 @@
         ? "Published on posts.html"
         : "Unpublished from posts.html";
       setStatus(`Saved ${pagePath}\nSaved at ${savedAt}\n${visibilityLine}\nUpdated data/content-index.json\nUpdated posts.html and index.html\nSaved ${savedImages.length} new media file(s) in ${imagesFolder}/`);
+    } catch (error) {
+      setStatus(error.message || String(error), true);
+    }
+  });
+
+  deletePostButton.addEventListener("click", async () => {
+    try {
+      if (!repoHandle) {
+        throw new Error("Pick the website folder first.");
+      }
+      if (!loadedPostRef || !loadedPostRef.item) {
+        throw new Error("Load a post first, then you can delete it.");
+      }
+
+      await deleteLoadedPost();
     } catch (error) {
       setStatus(error.message || String(error), true);
     }
@@ -459,7 +481,6 @@
 
   async function resolveHeroAsset({ slug, folderPath, forPreview = false }) {
     const resolvedHero = resolveHeroImagePath(slug);
-    const fallbackImage = loadedPostRef ? loadedPostRef.item.image : "temp/Bend_Lines.jfif";
     const heroEntry = findMediaEntryByPath(resolvedHero || heroImagePath);
 
     if (!heroEntry) {
@@ -468,7 +489,7 @@
         previewHeroObjectUrl = "";
       }
       return {
-        image: resolvedHero || fallbackImage,
+        image: resolvedHero || "",
         heroSource: ""
       };
     }
@@ -490,7 +511,7 @@
       previewHeroObjectUrl = "";
     }
     return {
-      image: getFirstHeroCandidatePath() || (getMediaKindFromPath(fallbackImage) === "image" ? fallbackImage : "temp/Bend_Lines.jfif"),
+      image: "",
       heroSource: ""
     };
   }
@@ -553,9 +574,6 @@
     };
 
     pendingImages.push(album);
-    if (!heroImagePath && album.images.length) {
-      heroImagePath = album.images[0].relativePath;
-    }
     renderImageList();
     queuePersistAndPreview();
   }
@@ -568,7 +586,7 @@
         entry,
         canBeHero: entry.mediaKind !== "video",
         onHero: () => {
-          heroImagePath = entry.relativePath.slice(3);
+          heroImagePath = isHeroPath(entry.relativePath) ? "" : entry.relativePath.slice(3);
           renderImageList();
           queuePersistAndPreview();
         },
@@ -602,7 +620,7 @@
             if (!currentImage) {
               return;
             }
-            heroImagePath = currentImage.relativePath;
+            heroImagePath = isHeroPath(currentImage.relativePath) ? "" : currentImage.relativePath;
             renderImageList();
             queuePersistAndPreview();
           },
@@ -644,7 +662,7 @@
         entry,
         canBeHero: entry.mediaKind !== "video",
         onHero: () => {
-          heroImagePath = entry.relativePath;
+          heroImagePath = isHeroPath(entry.relativePath) ? "" : entry.relativePath;
           renderImageList();
           queuePersistAndPreview();
         },
@@ -878,11 +896,13 @@
   }
 
   async function loadExistingImages(item) {
-    if (!repoHandle || !item.image) {
+    if (!repoHandle || !item.slug) {
       return [];
     }
 
-    const folderPath = item.image.split("/").slice(0, -1).join("/");
+    const folderPath = item.image
+      ? item.image.split("/").slice(0, -1).join("/")
+      : `images/${item.slug}`;
     if (!folderPath.startsWith("images/")) {
       return [];
     }
@@ -961,6 +981,72 @@
     return savedPaths;
   }
 
+  function resetEditorForNewPost() {
+    titleInput.value = "";
+    slugInput.value = "";
+    slugInput.dataset.touched = "";
+    dateInput.value = new Date().toISOString().slice(0, 10);
+    publishedInput.checked = true;
+    summaryInput.value = "";
+    tagsInput.value = "";
+    navSectionInput.value = "posts";
+    editor.innerHTML = "<p></p>";
+    pendingImages = [];
+    existingImages = [];
+    loadedPostRef = null;
+    heroImagePath = "";
+    loadedPostLabel.textContent = "loaded: new post";
+    clearSavedDraft();
+    updateDraftBanner();
+    cleanupEditorMarkup();
+    renderImageList();
+    renderPreview();
+  }
+
+  async function removeFileIfExists(path) {
+    try {
+      const parts = path.split("/").filter(Boolean);
+      const fileName = parts.pop();
+      const directory = await ensureDirectory(parts.join("/"), false);
+      await directory.removeEntry(fileName);
+    } catch {
+    }
+  }
+
+  async function removeDirectoryIfExists(path) {
+    try {
+      const parts = path.split("/").filter(Boolean);
+      const dirName = parts.pop();
+      const parent = await ensureDirectory(parts.join("/"), false);
+      await parent.removeEntry(dirName, { recursive: true });
+    } catch {
+    }
+  }
+
+  async function deleteLoadedPost() {
+    const item = loadedPostRef && loadedPostRef.item;
+    if (!item) {
+      throw new Error("No post is currently loaded.");
+    }
+
+    const confirmed = window.confirm(`Delete ${item.title} and its saved media? This cannot be undone.`);
+    if (!confirmed) {
+      return;
+    }
+
+    contentIndexCache = contentIndexCache || await readJson("data/content-index.json");
+    contentIndexCache.posts = (contentIndexCache.posts || []).filter((entry) => entry.slug !== item.slug);
+
+    await removeFileIfExists(item.path || `posts/${item.slug}.html`);
+    await removeDirectoryIfExists(`images/${item.slug}`);
+    await writeTextFile("data/content-index.json", JSON.stringify(contentIndexCache, null, 2) + "\n");
+    await writeTextFile("posts.html", renderIndexPage(contentIndexCache.posts || []));
+    await writeTextFile("index.html", await renderHomePageFromLocal(contentIndexCache.posts || []));
+
+    resetEditorForNewPost();
+    setStatus(`Deleted posts/${item.slug}.html, removed images/${item.slug}/, and updated the site index.`);
+  }
+
   async function readJson(path) {
     const file = await getFileHandle(path, false).then((handle) => handle.getFile());
     const parsed = JSON.parse(await file.text());
@@ -1005,10 +1091,9 @@
     const summary = summaryInput.value.trim();
     const tags = tagsInput.value.split(",").map((tag) => tag.trim()).filter(Boolean);
     const navSection = navSectionInput.value.trim() || "posts";
-    const fallbackImage = loadedPostRef ? loadedPostRef.item.image : "temp/Bend_Lines.jfif";
     const bodyHtml = safeBodyHtml();
     const heroAsset = await resolveHeroAsset({ slug, forPreview: true });
-    const image = heroAsset.image || fallbackImage;
+    const image = heroAsset.image || "";
 
     return {
       slug,
@@ -1406,8 +1491,11 @@
     const metaClass = "post-meta";
     const cards = visibleItems.map((item) => {
       const meta = (item.tags || []).map((tag) => `<span>${escapeHtml(tag)}</span>`).join("");
+      const mediaMarkup = item.image
+        ? renderMediaMarkup({ path: item.image, alt: item.title, mediaKind: getMediaKindFromPath(item.image) || "image", className: "post-card-media", muted: true })
+        : '<div class="post-card-media post-card-media-empty" aria-hidden="true"></div>';
       return `      <a class="${cardClass}" href="${escapeAttribute(item.path)}" data-date="${escapeAttribute(item.date)}">
-        ${renderMediaMarkup({ path: item.image, alt: item.title, mediaKind: getMediaKindFromPath(item.image) || "image", className: "post-card-media", muted: true })}
+        ${mediaMarkup}
         <div>
           <div class="${dateClass}">${escapeHtml(item.date)}</div>
           <h2>${escapeHtml(item.title)}</h2>
@@ -1462,13 +1550,17 @@
       align-items: start;
     }
     .${cardClass} img,
-    .${cardClass} video {
+    .${cardClass} video,
+    .${cardClass} .post-card-media-empty {
       width: 100%;
       aspect-ratio: 4 / 3;
       object-fit: cover;
       display: block;
       border: 1px solid var(--line);
       pointer-events: none;
+    }
+    .${cardClass} .post-card-media-empty {
+      background: #050505;
     }
     .${dateClass} { color: var(--accent); font-size: 0.95rem; margin-bottom: 0.5rem; }
     .${cardClass} h2 { margin: 0 0 0.5rem 0; font-size: 1.4rem; font-weight: normal; }
@@ -1524,10 +1616,10 @@ ${cards || emptyState}
 
   function renderPostPage(item) {
     const metaLine = [item.date].concat(item.tags || []).join(" | ");
-    const heroPath = item.image.startsWith("../") ? item.image : `../${item.image}`;
+    const heroPath = item.image ? (item.image.startsWith("../") ? item.image : `../${item.image}`) : "";
     const navSection = getNavSection(item);
     const heroBlurb = (item.heroBlurb || "").trim();
-    const heroKind = getMediaKindFromPath(heroPath) || "image";
+    const heroKind = heroPath ? (getMediaKindFromPath(heroPath) || "image") : "";
 
     return `<!DOCTYPE html>
 <html lang="en">
@@ -1544,7 +1636,7 @@ ${cards || emptyState}
     h1 { margin: 0 0 0.75rem 0; font-size: 2.2rem; font-weight: normal; letter-spacing: 0.04em; }
     .deck { margin: 0 0 1.5rem 0; color: var(--muted); line-height: 1.6; max-width: 70ch; }
     .hero-figure { margin: 0 0 2rem 0; }
-    .hero { width: auto; max-width: 100%; max-height: min(calc((100vw - 2rem) * 0.75), 675px); display: block; border: 1px solid var(--line); margin: 0 auto 2rem; background: #050505; }
+    .hero { width: auto; height: auto; max-width: 100%; max-height: min(60vh, calc((100vw - 2rem) * 0.75), 675px); display: block; border: 1px solid var(--line); margin: 0 auto 2rem; background: #050505; }
     .hero-caption { margin-top: -1.3rem; color: var(--muted); font-size: 0.95rem; line-height: 1.5; text-align: center; }
     .section { padding-top: 1rem; border-top: 1px solid var(--line); margin-top: 1rem; }
     .section h2 { margin: 0 0 0.75rem 0; font-size: 1.25rem; font-weight: normal; color: var(--accent); }
@@ -1564,7 +1656,8 @@ ${cards || emptyState}
       display: block;
       width: auto;
       max-width: 100%;
-      max-height: min(calc((100vw - 2rem) * 0.75), 675px);
+      height: auto;
+      max-height: min(60vh, calc((100vw - 2rem) * 0.75), 675px);
       margin: 0 auto;
       border: 1px solid var(--line);
     }
@@ -1582,10 +1675,10 @@ ${cards || emptyState}
     <div class="eyebrow" id="previewMeta">${escapeHtml(metaLine)}</div>
     <h1 id="previewTitle">${escapeHtml(item.title)}</h1>
     <p class="deck" id="previewDeck">${escapeHtml(item.summary)}</p>
-    <figure class="hero-figure" id="previewHeroFigure">
+    ${heroPath ? `<figure class="hero-figure" id="previewHeroFigure">
       ${renderMediaMarkup({ path: heroPath, alt: item.title, mediaKind: heroKind, className: heroKind === "video" ? "hero hero-video" : "hero", id: "previewHero", muted: heroKind === "video" })}${heroBlurb ? `
       <figcaption class="hero-caption" id="previewHeroCaption">${escapeHtml(heroBlurb)}</figcaption>` : ""}
-    </figure>
+    </figure>` : ""}
     <div class="post-body" id="previewBody">
       ${item.bodyHtml}
     </div>
@@ -1597,9 +1690,9 @@ ${cards || emptyState}
 
   function updatePreviewDocument(previewDocument, item) {
     const metaLine = [item.date].concat(item.tags || []).join(" | ");
-    const heroPath = item.image.startsWith("../") ? item.image : `../${item.image}`;
+    const heroPath = item.image ? (item.image.startsWith("../") ? item.image : `../${item.image}`) : "";
     const navSection = getNavSection(item);
-    const heroKind = getMediaKindFromPath(heroPath) || "image";
+    const heroKind = heroPath ? (getMediaKindFromPath(heroPath) || "image") : "";
 
     const meta = previewDocument.getElementById("previewMeta") || previewDocument.querySelector(".eyebrow");
     const title = previewDocument.getElementById("previewTitle") || previewDocument.querySelector("h1");
@@ -1625,7 +1718,11 @@ ${cards || emptyState}
     if (heroFigure) {
       heroFigure.id = "previewHeroFigure";
       const heroBlurb = (item.heroBlurb || "").trim();
-      heroFigure.innerHTML = `${renderMediaMarkup({ path: heroPath, alt: item.title, mediaKind: heroKind, className: heroKind === "video" ? "hero hero-video" : "hero", id: "previewHero", muted: heroKind === "video" })}${heroBlurb ? `<figcaption class="hero-caption" id="previewHeroCaption">${escapeHtml(heroBlurb)}</figcaption>` : ""}`;
+      if (heroPath) {
+        heroFigure.innerHTML = `${renderMediaMarkup({ path: heroPath, alt: item.title, mediaKind: heroKind, className: heroKind === "video" ? "hero hero-video" : "hero", id: "previewHero", muted: heroKind === "video" })}${heroBlurb ? `<figcaption class="hero-caption" id="previewHeroCaption">${escapeHtml(heroBlurb)}</figcaption>` : ""}`;
+      } else {
+        heroFigure.remove();
+      }
     }
     if (body) {
       body.id = "previewBody";
@@ -1648,6 +1745,9 @@ ${cards || emptyState}
   function getNavSection(item) {
     if (!item) {
       return "posts";
+    }
+    if (item.navSection === "reading list" || item.slug === "reading_list") {
+      return "reading-list";
     }
     return item.navSection === "engineering tips" || item.slug === "engineering_tips"
       ? "engineering-tips"
@@ -1749,7 +1849,9 @@ ${cards || emptyState}
       const grid = existingGrid || doc.createElement("div");
       grid.className = "grid";
       grid.innerHTML = visibleItems.map((item) => `    <div class="cell img-cell">
-      ${renderMediaMarkup({ path: item.image, alt: item.title, mediaKind: getMediaKindFromPath(item.image) || "image", className: "home-card-media", muted: true })}
+      ${item.image
+        ? renderMediaMarkup({ path: item.image, alt: item.title, mediaKind: getMediaKindFromPath(item.image) || "image", className: "home-card-media", muted: true })
+        : '<div class="home-card-media home-card-media-empty" aria-hidden="true"></div>'}
       <div class="overlay-title">${escapeHtml(item.title)}</div>
       <div class="overlay-desc">${escapeHtml(item.summary)}</div>
       <a href="${escapeAttribute(item.path)}" aria-label="${escapeAttribute(item.title)}"></a>
@@ -2068,9 +2170,11 @@ ${cards || emptyState}
       ...item,
       published: item.published !== false,
       path: normalizePostPath(item.path, item.slug),
-      navSection: item.navSection === "engineering tips" || item.slug === "engineering_tips"
-        ? "engineering tips"
-        : "posts"
+      navSection: item.navSection === "reading list" || item.slug === "reading_list"
+        ? "reading list"
+        : item.navSection === "engineering tips" || item.slug === "engineering_tips"
+          ? "engineering tips"
+          : "posts"
     }));
 
     const seen = new Set();

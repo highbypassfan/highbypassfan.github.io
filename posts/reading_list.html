@@ -13,7 +13,7 @@
     h1 { margin: 0 0 0.75rem 0; font-size: 2.2rem; font-weight: normal; letter-spacing: 0.04em; }
     .deck { margin: 0 0 1.5rem 0; color: var(--muted); line-height: 1.6; max-width: 70ch; }
     .hero-figure { margin: 0 0 2rem 0; }
-    .hero { width: auto; max-width: 100%; max-height: min(calc((100vw - 2rem) * 0.75), 675px); display: block; border: 1px solid var(--line); margin: 0 auto 2rem; background: #050505; }
+    .hero { width: auto; height: auto; max-width: 100%; max-height: min(60vh, calc((100vw - 2rem) * 0.75), 675px); display: block; border: 1px solid var(--line); margin: 0 auto 2rem; background: #050505; }
     .hero-caption { margin-top: -1.3rem; color: var(--muted); font-size: 0.95rem; line-height: 1.5; text-align: center; }
     .section { padding-top: 1rem; border-top: 1px solid var(--line); margin-top: 1rem; }
     .section h2 { margin: 0 0 0.75rem 0; font-size: 1.25rem; font-weight: normal; color: var(--accent); }
@@ -33,7 +33,8 @@
       display: block;
       width: auto;
       max-width: 100%;
-      max-height: min(calc((100vw - 2rem) * 0.75), 675px);
+      height: auto;
+      max-height: min(60vh, calc((100vw - 2rem) * 0.75), 675px);
       margin: 0 auto;
       border: 1px solid var(--line);
     }
@@ -46,7 +47,7 @@
   </style>
 </head>
 <body>
-  <div data-site-nav data-nav-prefix="../" data-nav-section="posts"></div>
+  <div data-site-nav data-nav-prefix="../" data-nav-section="reading-list"></div>
   <main class="page">
     <div class="eyebrow" id="previewMeta">2026-04-07</div>
     <h1 id="previewTitle">Reading List</h1>
