@@ -1,18 +1,46 @@
 {
   "posts": [
     {
-      "slug": "the_tube",
-      "title": "the tube",
-      "date": "2026-04-08",
+      "slug": "four_months_as_an_electrician",
+      "title": "Four Months as an Electrician",
+      "date": "2026-04-18",
       "published": true,
-      "summary": "You must choose wisely.",
+      "summary": "Some lessons from 8 months off from school.",
       "tags": [],
-      "image": "images/the_tube/album-1/Bend_Lines.jfif",
+      "image": "",
       "heroSource": "",
-      "heroBlurb": "test",
-      "path": "posts/the_tube.html",
+      "heroBlurb": "",
+      "path": "posts/four_months_as_an_electrician.html",
       "navSection": "posts",
-      "bodyHtml": "<p>testing!</p><p><br></p><p></p><p></p><p></p><p></p><p><br></p><p></p><p></p><p></p><p></p><figure class=\"post-image\" data-media-kind=\"video\"><video class=\"post-media-video\" src=\"../images/the_tube/so_true.mp4\" aria-label=\"the tube\" preload=\"metadata\" playsinline=\"\"></video><figcaption>the tube</figcaption></figure><p><br></p><p>wacky</p><p><br></p><p></p><p></p><figure class=\"post-album\" data-album-id=\"album-1775610765625-yl59on\" data-index=\"2\" data-album-name=\"album-1\"><img class=\"post-album-image\" src=\"../images/the_tube/album-1/toolbox_delivered.webp\" alt=\"waow\"><div class=\"post-album-meta\"><button class=\"album-nav prev\" type=\"button\">&lt;</button><figcaption class=\"post-album-caption\">waow</figcaption><button class=\"album-nav next\" type=\"button\">&gt;</button></div><div class=\"album-data\" hidden=\"\"><span class=\"album-item\" data-src=\"../images/the_tube/album-1/Bend_Lines.jfif\" data-alt=\"test\" data-blurb=\"test\"></span><span class=\"album-item\" data-src=\"../images/the_tube/album-1/Toolbox_below.png\" data-alt=\"test2\" data-blurb=\"test2\"></span><span class=\"album-item\" data-src=\"../images/the_tube/album-1/toolbox_delivered.webp\" data-alt=\"waow\" data-blurb=\"waow\"></span><span class=\"album-item\" data-src=\"../images/the_tube/album-1/toolbox_mount.jpg\" data-alt=\"the tube\" data-blurb=\"\"></span><span class=\"album-item\" data-src=\"../images/the_tube/album-1/toolbox_mounted.webp\" data-alt=\"the tube\" data-blurb=\"\"></span><span class=\"album-item\" data-src=\"../images/the_tube/album-1/Toolbox_SM.PNG\" data-alt=\"the tube\" data-blurb=\"\"></span><span class=\"album-item\" data-src=\"../images/the_tube/album-1/Toolbox_SM2.PNG\" data-alt=\"the tube\" data-blurb=\"\"></span><span class=\"album-item\" data-src=\"../images/the_tube/album-1/Toolbox_SM3.PNG\" data-alt=\"the tube\" data-blurb=\"\"></span><span class=\"album-item\" data-src=\"../images/the_tube/album-1/Toolbox.PNG\" data-alt=\"the tube\" data-blurb=\"\"></span></div></figure><p>nice that's better</p>"
+      "bodyHtml": "tbd<p></p>"
+    },
+    {
+      "slug": "advice_for_apprentice_electricians",
+      "title": "Advice for Apprentice Electricians",
+      "date": "2026-04-18",
+      "published": true,
+      "summary": "(and everyone else, but specifically trades)",
+      "tags": [],
+      "image": "images/advice_for_apprentice_electricians/Van2.PNG",
+      "heroSource": "",
+      "heroBlurb": "Mr. Neistat is right. Stop being late!",
+      "path": "posts/advice_for_apprentice_electricians.html",
+      "navSection": "posts",
+      "bodyHtml": "<p></p><p>to flesh out more, I need to frame this better to explain the value of wanting to do the best you can</p><p><br></p><p>pasted from my notes:</p><p><br></p><p><!-- obsidian --></p><p>electrician apprentice blog post on tips and things i’ve learned to be useful and do a good job (carry sharpie pencil knife etc) anticipate what tools people need and hand them to them if applicable to the situation (don't go overboard) always stay busy, default to cleaning up the space or immediately ask for the next thing to do. Pay attention, ask a lot of questions (why we do things this way or that way) if something seems wrong ask about it, better safe than sorry. Avoid using the bathroom excessively. </p>\n<p>BE ON TIME - TO BE ON TIME, ARRIVE EARLY, LEAVE EARLY <a href=\"https://youtu.be/Hm4mr7jzSpQ?si=QPiUzzp7Kip1U7wI\" class=\"external-link\" target=\"_blank\" rel=\"noopener nofollow\">https://youtu.be/Hm4mr7jzSpQ?si=QPiUzzp7Kip1U7wI</a> THE NUMBER ONE REASON PEOPLE ARE FIRED AT THE COMPANY IS FOR BEING LATE</p>\n<p>PAY ATTENTION - Pay critical attention to everything your journeyman does, ask them why they do things they way they do, often there are safety critical reasons. It your responsibility to learn accurately, make sure that you are understanding the tasks they demonstrate to you!</p>\n<p>Good Youtube channels: When you do anything seriously you should consume as much information as possible on the subject <a href=\"https://www.youtube.com/watch?v=lDzLRBZ7WM8\" class=\"external-link\" target=\"_blank\" rel=\"noopener nofollow\">https://www.youtube.com/watch?v=lDzLRBZ7WM8</a> palmer is decent, there are better channels I should put in here.&nbsp;&nbsp;</p><p></p>"
+    },
+    {
+      "slug": "luck",
+      "title": "Luck",
+      "date": "2026-04-18",
+      "published": false,
+      "summary": "It's not just random chance, you can make your own luck.",
+      "tags": [],
+      "image": "",
+      "heroSource": "",
+      "heroBlurb": "",
+      "path": "posts/luck.html",
+      "navSection": "posts",
+      "bodyHtml": "mostly a crosslinking page but I'll throw some tweets in here<p></p>"
     },
     {
       "slug": "this_website",
@@ -111,6 +139,20 @@
       "path": "posts/engineering_tips.html",
       "navSection": "engineering tips",
       "bodyHtml": "<p>todo</p>"
+    },
+    {
+      "slug": "open_sauce_2024",
+      "title": "Open Sauce 2024",
+      "date": "2023-06-16",
+      "published": true,
+      "summary": "Mostly photos.",
+      "tags": [],
+      "image": "",
+      "heroSource": "",
+      "heroBlurb": "",
+      "path": "posts/open_sauce_2024.html",
+      "navSection": "posts",
+      "bodyHtml": "tbd<p></p>"
     }
   ]
 }
