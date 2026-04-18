@@ -71,20 +71,6 @@
       "bodyHtml": "<p></p><p><br></p><p>placeholder for now</p>"
     },
     {
-      "slug": "nps_retrospective",
-      "title": "NPS Retrospective",
-      "date": "2026-04-08",
-      "published": true,
-      "summary": "Some thoughts from 2 summers at Naval Postgraduate school.",
-      "tags": [],
-      "image": "",
-      "heroSource": "",
-      "heroBlurb": "",
-      "path": "posts/nps_retrospective.html",
-      "navSection": "posts",
-      "bodyHtml": "<p></p><p><br></p><p>Some good info here perhaps.&nbsp;</p><p><br></p><p>Cursory overview of the research, any other interesting tidbits. Thoughts on working from home (I do not care for it!)</p>"
-    },
-    {
       "slug": "first_robotics",
       "title": "First Robotics",
       "date": "2026-04-08",
@@ -111,6 +97,20 @@
       "path": "posts/farmwise.html",
       "navSection": "posts",
       "bodyHtml": "<p></p><p>Lots of fun stuff.</p>"
+    },
+    {
+      "slug": "nps_retrospective",
+      "title": "NPS Retrospective",
+      "date": "2026-04-08",
+      "published": true,
+      "summary": "Some thoughts from 2 summers interning at Naval Postgraduate School.",
+      "tags": [],
+      "image": "",
+      "heroSource": "",
+      "heroBlurb": "",
+      "path": "posts/nps_retrospective.html",
+      "navSection": "posts",
+      "bodyHtml": "<p></p><p><br></p><p>Some good info here perhaps.&nbsp;</p><p><br></p><p>Cursory overview of the research, any other interesting tidbits. Thoughts on working from home (I do not care for it!)</p>"
     },
     {
       "slug": "reading_list",
