@@ -100,17 +100,17 @@
     },
     {
       "slug": "nps_retrospective",
-      "title": "NPS Retrospective",
+      "title": "NPS Research",
       "date": "2026-04-08",
       "published": true,
-      "summary": "Some thoughts from 2 summers interning at Naval Postgraduate school.",
+      "summary": "A summary of 2 summers interning at Naval Postgraduate school.",
       "tags": [],
-      "image": "",
+      "image": "images/nps_retrospective/samples.jpg",
       "heroSource": "",
-      "heroBlurb": "",
+      "heroBlurb": "Some SLM Steel samples undergoing heat treatment.",
       "path": "posts/nps_retrospective.html",
       "navSection": "posts",
-      "bodyHtml": "<p></p><p><br></p><p>Some good info here perhaps.&nbsp;</p><p><br></p><p>Cursory overview of the research, any other interesting tidbits. Thoughts on working from home (I do not care for it!)</p>"
+      "bodyHtml": "<p></p><p><br></p><p>Some good info here perhaps.&nbsp;</p><p><br></p><p>Cursory overview of the research, any other interesting tidbits. Thoughts on working from home (I do not care for it!)</p><p><br></p><p>paper is here:&nbsp;<a href=\"https://www.mdpi.com/2075-4701/10/2/218\">https://www.mdpi.com/2075-4701/10/2/218</a></p><p><br></p>"
     },
     {
       "slug": "reading_list",
