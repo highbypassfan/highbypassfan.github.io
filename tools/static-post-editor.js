@@ -1550,7 +1550,7 @@
 
   function renderIndexPage(items) {
     const visibleItems = items.filter((item) => item.published !== false);
-    const title = "Posts";
+    const title = "Posts | highbypassfan";
     const listId = "postList";
     const cardClass = "post-card";
     const listClass = "post-list";
@@ -1578,11 +1578,13 @@
 return `<!DOCTYPE html>
 <html lang="en">
 <head>
+  <meta charset="utf-8" />
   <meta name="viewport"
         content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>${title}</title>
+  <link rel="icon" type="image/jpeg" href="pfp.jpg" />
   <link rel="stylesheet" href="assets/site-shell.css" />
   <script defer src="assets/site-shell.js"></script>
-  <title>${title}</title>
 </head>
 <body class="site-posts">
   <div data-site-nav data-nav-prefix="" data-nav-section="posts"></div>
@@ -1635,11 +1637,13 @@ ${cards || emptyState}
 return `<!DOCTYPE html>
 <html lang="en">
 <head>
+  <meta charset="utf-8" />
   <meta name="viewport"
         content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>${escapeHtml(item.title)}</title>
+  <link rel="icon" type="image/jpeg" href="../pfp.jpg" />
   <link rel="stylesheet" href="../assets/site-shell.css" />
   <script defer src="../assets/site-shell.js"></script>
-  <title>${escapeHtml(item.title)}</title>
 </head>
 <body class="site-post-page">
   <div data-site-nav data-nav-prefix="../" data-nav-section="${navSection}"></div>
