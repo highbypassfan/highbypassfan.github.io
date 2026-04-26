@@ -26,13 +26,36 @@
     if (!lightbox) {
       lightbox = document.createElement("div");
       lightbox.className = "image-lightbox";
-      lightbox.innerHTML = '<button type="button" class="image-lightbox-close" aria-label="Close media viewer">x</button><img alt=""><video controls playsinline preload="metadata"></video>';
+      lightbox.innerHTML = '<button type="button" class="image-lightbox-close" aria-label="Close media viewer">x</button><img alt="">';
       document.body.appendChild(lightbox);
     }
 
     const closeButton = lightbox.querySelector(".image-lightbox-close");
     const lightboxImage = lightbox.querySelector("img");
-    const lightboxVideo = lightbox.querySelector("video");
+
+    function ensureLightboxVideo() {
+      let video = lightbox.querySelector("video");
+      if (!video) {
+        video = document.createElement("video");
+        video.controls = true;
+        video.playsInline = true;
+        video.preload = "metadata";
+        lightbox.appendChild(video);
+      }
+      return video;
+    }
+
+    function teardownLightboxVideo() {
+      const video = lightbox.querySelector("video");
+      if (!video) {
+        return;
+      }
+      video.pause();
+      video.removeAttribute("src");
+      video.removeAttribute("aria-label");
+      video.load();
+      video.remove();
+    }
 
     function closeLightbox() {
       lightbox.classList.remove("open");
@@ -40,27 +63,20 @@
       lightboxImage.style.display = "none";
       lightboxImage.removeAttribute("src");
       lightboxImage.removeAttribute("alt");
-      lightboxVideo.pause();
-      lightboxVideo.style.display = "none";
-      lightboxVideo.removeAttribute("src");
-      lightboxVideo.removeAttribute("aria-label");
-      lightboxVideo.load();
+      teardownLightboxVideo();
     }
 
     function openLightbox(media) {
       if (media.tagName === "VIDEO") {
         lightboxImage.style.display = "none";
+        const lightboxVideo = ensureLightboxVideo();
         lightboxVideo.src = media.currentSrc || media.src;
         lightboxVideo.setAttribute("aria-label", media.getAttribute("aria-label") || media.getAttribute("title") || "");
         lightboxVideo.style.display = "block";
         const currentTime = Number(media.currentTime || 0);
         lightboxVideo.currentTime = Number.isFinite(currentTime) ? currentTime : 0;
       } else {
-        lightboxVideo.pause();
-        lightboxVideo.style.display = "none";
-        lightboxVideo.removeAttribute("src");
-        lightboxVideo.removeAttribute("aria-label");
-        lightboxVideo.load();
+        teardownLightboxVideo();
         lightboxImage.src = media.currentSrc || media.src;
         lightboxImage.alt = media.alt || "";
         lightboxImage.style.display = "block";
