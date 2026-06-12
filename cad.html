@@ -1,0 +1,1061 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SDF CAD</title>
+<style>
+  :root {
+    --bg: #16171c;
+    --panel: #1e2027;
+    --panel2: #23252e;
+    --border: #2e313c;
+    --text: #c9cdd6;
+    --text-dim: #7d8290;
+    --accent: #4f8ef7;
+    --accent2: #ffb347;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { height: 100%; overflow: hidden; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font: 13px/1.4 "Segoe UI", system-ui, sans-serif;
+    user-select: none;
+  }
+  #app { display: flex; flex-direction: column; height: 100%; }
+
+  /* ---- toolbar ---- */
+  #toolbar {
+    display: flex; align-items: center; gap: 6px;
+    height: 44px; padding: 0 10px;
+    background: var(--panel); border-bottom: 1px solid var(--border);
+    flex: 0 0 auto;
+  }
+  #logo { font-weight: 600; color: #e8eaf0; margin-right: 10px; letter-spacing: .5px; }
+  #logo span { color: var(--accent); }
+  button {
+    background: var(--panel2); color: var(--text);
+    border: 1px solid var(--border); border-radius: 5px;
+    padding: 6px 12px; font: inherit; cursor: pointer;
+    transition: background .12s, border-color .12s;
+  }
+  button:hover:not(:disabled) { background: #2b2e39; border-color: #3d4150; }
+  button:disabled { opacity: .4; cursor: default; }
+  button.active { background: #31415f; border-color: var(--accent); color: #dce7fb; }
+  .sep { width: 1px; height: 22px; background: var(--border); margin: 0 4px; }
+  .flex { flex: 1; }
+  .badge {
+    background: #31415f; color: #aecbff; border-radius: 4px;
+    padding: 4px 8px; font-size: 12px; font-weight: 600;
+  }
+  .hidden { display: none !important; }
+
+  /* ---- main layout ---- */
+  #main { display: flex; flex: 1; min-height: 0; }
+  #tree, #props {
+    background: var(--panel); flex: 0 0 auto; overflow-y: auto;
+  }
+  #tree { width: 215px; border-right: 1px solid var(--border); }
+  #props { width: 265px; border-left: 1px solid var(--border); }
+  .panel-title {
+    padding: 9px 12px; font-size: 11px; font-weight: 600;
+    text-transform: uppercase; letter-spacing: 1px; color: var(--text-dim);
+    border-bottom: 1px solid var(--border);
+  }
+
+  /* ---- feature tree ---- */
+  .tree-item {
+    display: flex; align-items: center; gap: 8px;
+    padding: 7px 12px; cursor: pointer; border-left: 2px solid transparent;
+  }
+  .tree-item:hover { background: var(--panel2); }
+  .tree-item.selected { background: #2a3650; border-left-color: var(--accent); }
+  .tree-item .icon { width: 16px; text-align: center; color: var(--text-dim); }
+  .tree-item.selected .icon { color: var(--accent); }
+  .tree-item .nm { flex: 1; }
+  .tree-item .sub { color: var(--text-dim); font-size: 11px; }
+  .tree-item .del {
+    visibility: hidden; border: none; background: none; color: var(--text-dim);
+    padding: 0 4px; font-size: 14px;
+  }
+  .tree-item:hover .del { visibility: visible; }
+  .tree-item .del:hover { color: #ff6b6b; background: none; }
+  .tree-empty { padding: 14px 12px; color: var(--text-dim); font-style: italic; }
+
+  /* ---- properties ---- */
+  #propBody { padding: 10px 12px; }
+  .prop-head {
+    display: flex; align-items: center; justify-content: space-between;
+    margin-bottom: 10px;
+  }
+  .prop-head .ttl { font-weight: 600; color: #e8eaf0; font-size: 14px; }
+  .prop-head .del-btn { padding: 3px 9px; font-size: 12px; color: #ff8a8a; }
+  .prop-row {
+    display: flex; align-items: center; justify-content: space-between;
+    margin-bottom: 8px; gap: 8px;
+  }
+  .prop-row label { color: var(--text-dim); flex: 0 0 auto; }
+  .prop-row input[type="number"], .prop-row select {
+    width: 90px; background: var(--bg); color: var(--text);
+    border: 1px solid var(--border); border-radius: 4px;
+    padding: 5px 7px; font: inherit;
+  }
+  .prop-row input[type="number"]:focus, .prop-row select:focus {
+    outline: none; border-color: var(--accent);
+  }
+  .prop-row input[type="range"] { flex: 1; accent-color: var(--accent); }
+  .prop-row .rval { width: 36px; text-align: right; color: var(--text-dim); font-size: 12px; }
+  .prop-row input[type="checkbox"] { accent-color: var(--accent); width: 15px; height: 15px; }
+  .prop-section {
+    margin-top: 14px; padding-top: 10px; border-top: 1px solid var(--border);
+  }
+  .prop-section .sec-title {
+    font-size: 11px; font-weight: 600; text-transform: uppercase;
+    letter-spacing: 1px; color: var(--text-dim); margin-bottom: 8px;
+  }
+  .wide-btn { width: 100%; margin-top: 4px; background: #31415f; border-color: #3d5680; }
+  .wide-btn:hover:not(:disabled) { background: #3a4d6f !important; }
+  .empty { color: var(--text-dim); font-style: italic; padding: 4px 0; }
+  .note { color: var(--text-dim); font-size: 11px; margin-top: 8px; }
+
+  /* ---- viewport ---- */
+  #viewport { position: relative; flex: 1; min-width: 0; background: #0e0f12; }
+  #gl, #overlay { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+  #overlay { pointer-events: none; }
+  #hint {
+    position: absolute; left: 0; right: 0; bottom: 0;
+    padding: 6px 12px; font-size: 12px; color: var(--text-dim);
+    background: linear-gradient(transparent, rgba(14,15,18,.85));
+    pointer-events: none; text-align: center;
+  }
+</style>
+</head>
+<body>
+<div id="app">
+  <div id="toolbar">
+    <div id="logo"><span>&#x2B22;</span> SDF CAD</div>
+    <button id="btnSketch">&#x270E; Sketch</button>
+    <span id="planePick" class="hidden">
+      <span style="color:var(--text-dim);margin:0 4px">plane:</span>
+      <button data-plane="XY">XY</button>
+      <button data-plane="YZ">YZ</button>
+      <button data-plane="XZ">XZ</button>
+    </span>
+    <span id="sketchTools" class="hidden">
+      <span class="badge" id="planeLabel">XY</span>
+      <button id="toolRect" class="active">&#x25AD; Rect</button>
+      <button id="toolCircle">&#x25EF; Circle</button>
+      <button id="btnFinish">&#x2713; Finish</button>
+    </span>
+    <span class="sep"></span>
+    <button id="btnExtrude" disabled>&#x2B06; Extrude</button>
+    <span class="flex"></span>
+    <button id="btnIso">&#x2302; Iso View</button>
+  </div>
+  <div id="main">
+    <div id="tree">
+      <div class="panel-title">Feature Tree</div>
+      <div id="treeList"></div>
+    </div>
+    <div id="viewport">
+      <canvas id="gl"></canvas>
+      <canvas id="overlay"></canvas>
+      <div id="hint"></div>
+    </div>
+    <div id="props">
+      <div class="panel-title">Properties</div>
+      <div id="propBody"></div>
+    </div>
+  </div>
+</div>
+
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+    "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+  }
+}
+</script>
+
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+/* =====================================================================
+   LAYER A — DOCUMENT MODEL
+   An ordered list of features, plain JS objects. Nothing here knows
+   about GLSL or the DOM.
+   feature types:
+     { id, type:'sketch',  name, plane:'XY'|'YZ'|'XZ',
+       shape: {kind:'rect',cx,cy,w,h} | {kind:'circle',cx,cy,r} }
+     { id, type:'extrude', name, sketchId, depth, cut:bool, blend }
+   ===================================================================== */
+let uidCounter = 0;
+const uid = () => ++uidCounter;
+
+const doc = {
+  features: [],
+  counters: { sketch: 0, extrude: 0, cut: 0 }
+};
+
+function getSketch(id) {
+  return doc.features.find(f => f.type === 'sketch' && f.id === id);
+}
+
+function addSketchFeature(plane, shape) {
+  doc.counters.sketch++;
+  const f = { id: uid(), type: 'sketch', name: 'Sketch' + doc.counters.sketch, plane, shape };
+  doc.features.push(f);
+  return f;
+}
+
+function addExtrudeFeature(sketch, depth, cut) {
+  const n = cut ? ++doc.counters.cut : ++doc.counters.extrude;
+  const f = {
+    id: uid(), type: 'extrude',
+    name: (cut ? 'Cut' : 'Extrude') + n,
+    sketchId: sketch.id, depth, cut, blend: 0
+  };
+  doc.features.push(f);
+  return f;
+}
+
+function deleteFeature(f) {
+  // deleting a sketch removes every extrude that depends on it
+  doc.features = doc.features.filter(g =>
+    g !== f && !(f.type === 'sketch' && g.type === 'extrude' && g.sketchId === f.id));
+}
+
+/* =====================================================================
+   LAYER B — SDF COMPILER
+   Walks the feature list and emits the GLSL map() function as a string.
+   Every numeric parameter goes through the uP[] uniform array, so
+   editing a value only re-uploads uniforms — the shader is recompiled
+   only when the structure of the model changes.
+   ===================================================================== */
+const MAX_PARAMS = 256;
+
+// (u,v,n) swizzles per sketch plane: u,v span the plane, n is its normal
+const PLANE_SWIZZLE = {
+  XY: ['p.x', 'p.y', 'p.z'],
+  YZ: ['p.y', 'p.z', 'p.x'],
+  XZ: ['p.x', 'p.z', 'p.y']
+};
+
+function compileDocument(document_) {
+  const getters = [];          // getters[i]() -> current value of uP[i]
+  const idMap = {};            // feature.id -> shader id (for selection highlight)
+  let body = '';
+  let shaderId = 0;
+
+  const P = (fn) => {
+    const i = getters.length;
+    getters.push(fn);
+    return `uP[${i}]`;
+  };
+
+  for (const f of document_.features) {
+    if (f.type !== 'extrude') continue;
+    const sk = getSketch(f.sketchId);
+    if (!sk) continue;
+    if (getters.length + 8 > MAX_PARAMS) { console.warn('parameter budget exceeded'); break; }
+
+    const sid = shaderId++;
+    idMap[f.id] = sid;
+    const sw = PLANE_SWIZZLE[sk.plane];
+    const sh = sk.shape;
+
+    const cx = P(() => sh.cx);
+    const cy = P(() => sh.cy);
+    const cz = P(() => f.depth / 2);               // solid is centered depth/2 along the normal
+    const q = `vec3(${sw[0]}-${cx}, ${sw[1]}-${cy}, ${sw[2]}-${cz})`;
+
+    let dExpr;
+    if (sh.kind === 'rect') {
+      const hx = P(() => Math.abs(sh.w) / 2);
+      const hy = P(() => Math.abs(sh.h) / 2);
+      const hz = P(() => Math.abs(f.depth) / 2);
+      dExpr = `sdBox(q, vec3(${hx}, ${hy}, ${hz}))`;
+    } else {
+      const r = P(() => Math.abs(sh.r));
+      const hz = P(() => Math.abs(f.depth) / 2);
+      dExpr = `sdCyl(q, ${r}, ${hz})`;
+    }
+    const k = P(() => Math.max(f.blend, 0.0001));
+
+    if (f.cut) {
+      body += `  { vec3 q = ${q}; float d = ${dExpr};\n` +
+              `    if (-d > res.x) res.y = ${sid}.0;\n` +
+              `    res.x = smax(res.x, -d, ${k}); }\n`;
+    } else {
+      body += `  { vec3 q = ${q}; float d = ${dExpr};\n` +
+              `    if (d < res.x) res.y = ${sid}.0;\n` +
+              `    res.x = smin(res.x, d, ${k}); }\n`;
+    }
+  }
+
+  const mapSrc =
+`vec2 map(vec3 p) {
+  vec2 res = vec2(1e5, -1.0);
+${body}  return res;
+}`;
+  return { mapSrc, getters, idMap };
+}
+
+/* =====================================================================
+   RENDERER — raymarched fullscreen quad
+   ===================================================================== */
+const VERT = `
+void main() { gl_Position = vec4(position.xy, 0.0, 1.0); }
+`;
+
+const FRAG_TEMPLATE = `
+precision highp float;
+
+uniform vec2  uRes;
+uniform vec3  uCamPos;
+uniform vec3  uCamRight;
+uniform vec3  uCamUp;
+uniform vec3  uCamFwd;
+uniform float uTanX;
+uniform float uTanY;
+uniform float uSelId;
+uniform float uP[${MAX_PARAMS}];
+
+#define MAX_STEPS 128
+#define MAX_DIST  600.0
+
+const vec3 LIG = normalize(vec3(0.55, 0.8, 0.35));
+
+float smin(float a, float b, float k) {
+  k = max(k, 1e-4);
+  float h = clamp(0.5 + 0.5 * (b - a) / k, 0.0, 1.0);
+  return mix(b, a, h) - k * h * (1.0 - h);
+}
+float smax(float a, float b, float k) { return -smin(-a, -b, k); }
+
+float sdBox(vec3 p, vec3 b) {
+  vec3 q = abs(p) - b;
+  return length(max(q, 0.0)) + min(max(q.x, max(q.y, q.z)), 0.0);
+}
+float sdCyl(vec3 p, float r, float h) {
+  vec2 d = vec2(length(p.xy) - r, abs(p.z) - h);
+  return min(max(d.x, d.y), 0.0) + length(max(d, 0.0));
+}
+
+//__MAP__
+
+vec3 calcNormal(vec3 p, float t) {
+  float h = max(0.0012, 0.0006 * t);
+  vec2 e = vec2(1.0, -1.0);
+  return normalize(e.xyy * map(p + e.xyy * h).x
+                 + e.yyx * map(p + e.yyx * h).x
+                 + e.yxy * map(p + e.yxy * h).x
+                 + e.xxx * map(p + e.xxx * h).x);
+}
+
+vec2 march(vec3 ro, vec3 rd) {
+  float t = 0.0;
+  for (int i = 0; i < MAX_STEPS; i++) {
+    vec2 h = map(ro + rd * t);
+    if (h.x < max(0.0008 * t, 0.0012)) return vec2(t, h.y);
+    t += h.x;
+    if (t > MAX_DIST) break;
+  }
+  return vec2(-1.0, -1.0);
+}
+
+float calcAO(vec3 p, vec3 n) {
+  float occ = 0.0, sca = 1.0;
+  for (int i = 1; i <= 5; i++) {
+    float hr = 0.6 * float(i);
+    occ += (hr - map(p + n * hr).x) * sca;
+    sca *= 0.65;
+  }
+  return clamp(1.0 - 0.22 * occ, 0.0, 1.0);
+}
+
+float softShadow(vec3 ro, vec3 rd) {
+  float res = 1.0, t = 0.08;
+  for (int i = 0; i < 40; i++) {
+    float h = map(ro + rd * t).x;
+    if (h < 0.001) return 0.0;
+    res = min(res, 9.0 * h / t);
+    t += clamp(h, 0.08, 5.0);
+    if (t > 150.0) break;
+  }
+  return clamp(res, 0.0, 1.0);
+}
+
+vec3 shadeSurface(vec3 ro, vec3 rd, float t, float id, vec3 bg) {
+  vec3 pos = ro + rd * t;
+  vec3 n = calcNormal(pos, t);
+  float ao = calcAO(pos, n);
+  float sh = softShadow(pos + n * 0.03, LIG);
+  bool sel = abs(id - uSelId) < 0.5;
+  vec3 alb = sel ? vec3(0.95, 0.55, 0.18) : vec3(0.50, 0.58, 0.68);
+
+  float dif = clamp(dot(n, LIG), 0.0, 1.0) * sh;
+  float bak = clamp(dot(n, normalize(vec3(-0.5, 0.2, -0.45))), 0.0, 1.0);
+  float amb = 0.5 + 0.5 * n.y;
+  vec3  hal = normalize(LIG - rd);
+  float spe = pow(clamp(dot(n, hal), 0.0, 1.0), 32.0) * dif;
+  float fre = pow(clamp(1.0 + dot(n, rd), 0.0, 1.0), 4.0);
+
+  vec3 col = alb * (0.32 * amb * ao + 0.95 * dif) + alb * 0.20 * bak * ao;
+  col += vec3(0.9) * spe * 0.65;
+  col += alb * fre * 0.3 * ao;
+  return mix(col, bg, clamp(t / MAX_DIST, 0.0, 1.0));
+}
+
+vec3 shadeGround(vec3 ro, vec3 rd, float t, vec3 bg) {
+  vec3 p = ro + rd * t;
+  vec3 col = vec3(0.105, 0.110, 0.126);
+  vec2 q = p.xz;
+
+  vec2 fw1 = fwidth(q) / 10.0;
+  vec2 g1 = abs(fract(q / 10.0 - 0.5) - 0.5) / max(fw1, vec2(1e-5));
+  float minor = 1.0 - min(min(g1.x, g1.y), 1.0);
+  vec2 fw2 = fwidth(q) / 50.0;
+  vec2 g2 = abs(fract(q / 50.0 - 0.5) - 0.5) / max(fw2, vec2(1e-5));
+  float major = 1.0 - min(min(g2.x, g2.y), 1.0);
+  col = mix(col, vec3(0.185, 0.195, 0.225), minor * 0.65);
+  col = mix(col, vec3(0.255, 0.275, 0.315), major * 0.8);
+
+  float ax = 1.0 - min(abs(p.z) / max(1.6 * fwidth(p.z), 1e-5), 1.0);  // X axis (red)
+  float az = 1.0 - min(abs(p.x) / max(1.6 * fwidth(p.x), 1e-5), 1.0);  // Z axis (blue)
+  col = mix(col, vec3(0.80, 0.25, 0.30), ax);
+  col = mix(col, vec3(0.25, 0.45, 0.95), az);
+
+  float sh = softShadow(p + vec3(0.0, 0.03, 0.0), LIG);
+  col *= mix(0.45, 1.0, sh);
+
+  float fade = exp(-0.004 * t) * exp(-0.00004 * dot(q, q));
+  return mix(bg, col, clamp(fade * 1.5, 0.0, 1.0));
+}
+
+void main() {
+  vec2 ndc = (gl_FragCoord.xy / uRes) * 2.0 - 1.0;
+  vec3 rd = normalize(uCamFwd + ndc.x * uTanX * uCamRight + ndc.y * uTanY * uCamUp);
+  vec3 ro = uCamPos;
+
+  vec3 bg = mix(vec3(0.082, 0.088, 0.104), vec3(0.135, 0.150, 0.182),
+                clamp(rd.y * 0.7 + 0.6, 0.0, 1.0));
+  vec3 col = bg;
+
+  vec2 hit = march(ro, rd);
+  float tg = (abs(rd.y) > 1e-6) ? (-ro.y / rd.y) : -1.0;
+
+  if (hit.x > 0.0 && (tg <= 0.0 || hit.x < tg)) {
+    col = shadeSurface(ro, rd, hit.x, hit.y, bg);
+  } else if (tg > 0.0) {
+    col = shadeGround(ro, rd, tg, bg);
+  }
+
+  col = pow(max(col, 0.0), vec3(1.0 / 2.2));
+  gl_FragColor = vec4(col, 1.0);
+}
+`;
+
+// ---- three.js plumbing -------------------------------------------------
+const viewportEl = document.getElementById('viewport');
+const glCanvas = document.getElementById('gl');
+const overlayCanvas = document.getElementById('overlay');
+const octx = overlayCanvas.getContext('2d');
+
+const renderer = new THREE.WebGLRenderer({ canvas: glCanvas, antialias: false });
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5));
+
+const quadScene = new THREE.Scene();
+const quadCam = new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1);
+
+const uniforms = {
+  uRes:      { value: new THREE.Vector2(1, 1) },
+  uCamPos:   { value: new THREE.Vector3() },
+  uCamRight: { value: new THREE.Vector3() },
+  uCamUp:    { value: new THREE.Vector3() },
+  uCamFwd:   { value: new THREE.Vector3() },
+  uTanX:     { value: 1 },
+  uTanY:     { value: 1 },
+  uSelId:    { value: -2 },
+  uP:        { value: new Float32Array(MAX_PARAMS) }
+};
+
+const material = new THREE.ShaderMaterial({
+  vertexShader: VERT,
+  fragmentShader: FRAG_TEMPLATE.replace('//__MAP__', 'vec2 map(vec3 p){ return vec2(1e5, -1.0); }'),
+  uniforms, depthTest: false, depthWrite: false
+});
+const quad = new THREE.Mesh(new THREE.PlaneGeometry(2, 2), material);
+quad.frustumCulled = false;
+quadScene.add(quad);
+
+// real perspective camera — used only for math (rays, projection, controls)
+const camera = new THREE.PerspectiveCamera(45, 1, 0.1, 2000);
+camera.position.set(95, 75, 95);
+const controls = new OrbitControls(camera, glCanvas);
+controls.target.set(0, 10, 0);
+controls.enableDamping = true;
+controls.dampingFactor = 0.12;
+
+// compiled state
+let paramGetters = [];
+let shaderIdMap = {};
+
+function recompileShader() {
+  const c = compileDocument(doc);
+  paramGetters = c.getters;
+  shaderIdMap = c.idMap;
+  material.fragmentShader = FRAG_TEMPLATE.replace('//__MAP__', c.mapSrc);
+  material.needsUpdate = true;
+  updateParams();
+  updateSelUniform();
+}
+
+function updateParams() {
+  const arr = uniforms.uP.value;
+  for (let i = 0; i < paramGetters.length; i++) arr[i] = paramGetters[i]();
+}
+
+function updateSelUniform() {
+  const f = state.selected;
+  uniforms.uSelId.value = (f && f.type === 'extrude' && shaderIdMap[f.id] !== undefined)
+    ? shaderIdMap[f.id] : -2;
+}
+
+/* =====================================================================
+   LAYER C — UI
+   ===================================================================== */
+const PLANES = {
+  XY: { normal: new THREE.Vector3(0, 0, 1), toWorld: (u, v, w = 0) => new THREE.Vector3(u, v, w), from: p => [p.x, p.y], labels: ['x', 'y'] },
+  YZ: { normal: new THREE.Vector3(1, 0, 0), toWorld: (u, v, w = 0) => new THREE.Vector3(w, u, v), from: p => [p.y, p.z], labels: ['y', 'z'] },
+  XZ: { normal: new THREE.Vector3(0, 1, 0), toWorld: (u, v, w = 0) => new THREE.Vector3(u, w, v), from: p => [p.x, p.z], labels: ['x', 'z'] }
+};
+
+const state = {
+  sketchMode: false,
+  plane: 'XY',
+  tool: 'rect',       // 'rect' | 'circle'
+  drag: null,         // { x0,y0,x1,y1 }
+  hover: null,        // [u,v] in plane coords while sketching
+  selected: null
+};
+
+// ---- element refs ----
+const el = id => document.getElementById(id);
+const btnSketch = el('btnSketch'), planePick = el('planePick'),
+      sketchTools = el('sketchTools'), planeLabel = el('planeLabel'),
+      toolRect = el('toolRect'), toolCircle = el('toolCircle'),
+      btnFinish = el('btnFinish'), btnExtrude = el('btnExtrude'),
+      btnIso = el('btnIso'), treeList = el('treeList'),
+      propBody = el('propBody'), hintEl = el('hint');
+
+// ---- selection ----
+function select(f) {
+  state.selected = f;
+  updateSelUniform();
+  renderTree();
+  renderProps();
+  btnExtrude.disabled = !(f && f.type === 'sketch');
+}
+
+// structure changed: recompile shader + refresh all UI
+function rebuildAll() {
+  recompileShader();
+  renderTree();
+  renderProps();
+  btnExtrude.disabled = !(state.selected && state.selected.type === 'sketch');
+}
+
+// ---- feature tree ----
+function renderTree() {
+  treeList.innerHTML = '';
+  if (!doc.features.length) {
+    const d = document.createElement('div');
+    d.className = 'tree-empty';
+    d.textContent = 'No features yet — start a sketch.';
+    treeList.appendChild(d);
+    return;
+  }
+  for (const f of doc.features) {
+    const item = document.createElement('div');
+    item.className = 'tree-item' + (f === state.selected ? ' selected' : '');
+    const icon = f.type === 'sketch' ? '✎' : (f.cut ? '⊖' : '⬆');
+    let sub = '';
+    if (f.type === 'sketch') sub = f.plane;
+    else { const sk = getSketch(f.sketchId); sub = sk ? sk.name : '?'; }
+    item.innerHTML =
+      `<span class="icon">${icon}</span><span class="nm">${f.name}</span>` +
+      `<span class="sub">${sub}</span><button class="del" title="Delete">×</button>`;
+    item.addEventListener('click', () => select(f));
+    item.querySelector('.del').addEventListener('click', (e) => {
+      e.stopPropagation();
+      removeFeature(f);
+    });
+    treeList.appendChild(item);
+  }
+}
+
+function removeFeature(f) {
+  deleteFeature(f);
+  if (!doc.features.includes(state.selected)) state.selected = null;
+  rebuildAll();
+}
+
+// ---- properties panel ----
+function propRow(label, inputEl, extra) {
+  const row = document.createElement('div');
+  row.className = 'prop-row';
+  const lab = document.createElement('label');
+  lab.textContent = label;
+  row.appendChild(lab);
+  row.appendChild(inputEl);
+  if (extra) row.appendChild(extra);
+  return row;
+}
+
+function numberInput(get, set, step = 1, structural = false) {
+  const inp = document.createElement('input');
+  inp.type = 'number';
+  inp.step = step;
+  inp.value = +get().toFixed(3);
+  inp.addEventListener('input', () => {
+    const v = parseFloat(inp.value);
+    if (isNaN(v)) return;
+    set(v);
+    if (structural) recompileShader(); else updateParams();
+  });
+  return inp;
+}
+
+function renderProps() {
+  propBody.innerHTML = '';
+  const f = state.selected;
+  if (!f) {
+    propBody.innerHTML = '<div class="empty">Select a feature</div>';
+    return;
+  }
+
+  const head = document.createElement('div');
+  head.className = 'prop-head';
+  head.innerHTML = `<span class="ttl">${f.name}</span>`;
+  const delBtn = document.createElement('button');
+  delBtn.className = 'del-btn';
+  delBtn.textContent = 'Delete';
+  delBtn.addEventListener('click', () => removeFeature(f));
+  head.appendChild(delBtn);
+  propBody.appendChild(head);
+
+  if (f.type === 'sketch') {
+    // plane (structural — swizzle is baked into the shader)
+    const sel = document.createElement('select');
+    for (const p of ['XY', 'YZ', 'XZ']) {
+      const o = document.createElement('option');
+      o.value = p; o.textContent = p; if (p === f.plane) o.selected = true;
+      sel.appendChild(o);
+    }
+    sel.addEventListener('change', () => { f.plane = sel.value; recompileShader(); renderTree(); });
+    propBody.appendChild(propRow('Plane', sel));
+
+    const sh = f.shape;
+    const [lu, lv] = PLANES[f.plane].labels;
+    propBody.appendChild(propRow(`Center ${lu}`, numberInput(() => sh.cx, v => sh.cx = v)));
+    propBody.appendChild(propRow(`Center ${lv}`, numberInput(() => sh.cy, v => sh.cy = v)));
+    if (sh.kind === 'rect') {
+      propBody.appendChild(propRow('Width', numberInput(() => sh.w, v => sh.w = v)));
+      propBody.appendChild(propRow('Height', numberInput(() => sh.h, v => sh.h = v)));
+    } else {
+      propBody.appendChild(propRow('Radius', numberInput(() => sh.r, v => sh.r = v)));
+    }
+
+    // extrude section
+    const sec = document.createElement('div');
+    sec.className = 'prop-section';
+    sec.innerHTML = '<div class="sec-title">Extrude</div>';
+    const depthInp = document.createElement('input');
+    depthInp.type = 'number'; depthInp.step = 1; depthInp.value = 20;
+    sec.appendChild(propRow('Distance', depthInp));
+    const cutChk = document.createElement('input');
+    cutChk.type = 'checkbox';
+    sec.appendChild(propRow('Extrude as cut', cutChk));
+    const go = document.createElement('button');
+    go.className = 'wide-btn';
+    go.textContent = '⬆ Create Extrude';
+    go.addEventListener('click', () => {
+      const d = parseFloat(depthInp.value);
+      if (isNaN(d) || d === 0) return;
+      const ex = addExtrudeFeature(f, d, cutChk.checked);
+      select(ex);
+      rebuildAll();
+    });
+    sec.appendChild(go);
+    propBody.appendChild(sec);
+
+  } else {
+    const sk = getSketch(f.sketchId);
+    const lbl = document.createElement('div');
+    lbl.className = 'prop-row';
+    lbl.innerHTML = `<label>Profile</label><span>${sk ? sk.name : '(missing)'}</span>`;
+    propBody.appendChild(lbl);
+
+    propBody.appendChild(propRow('Distance', numberInput(() => f.depth, v => f.depth = v)));
+
+    const cutChk = document.createElement('input');
+    cutChk.type = 'checkbox'; cutChk.checked = f.cut;
+    cutChk.addEventListener('change', () => { f.cut = cutChk.checked; recompileShader(); renderTree(); updateSelUniform(); });
+    propBody.appendChild(propRow('Cut', cutChk));
+
+    // smooth-blend slider (fillet-like soft boolean)
+    const rng = document.createElement('input');
+    rng.type = 'range'; rng.min = 0; rng.max = 10; rng.step = 0.1; rng.value = f.blend;
+    const rval = document.createElement('span');
+    rval.className = 'rval'; rval.textContent = f.blend.toFixed(1);
+    rng.addEventListener('input', () => {
+      f.blend = parseFloat(rng.value);
+      rval.textContent = f.blend.toFixed(1);
+      updateParams();
+    });
+    propBody.appendChild(propRow('Blend', rng, rval));
+
+    const note = document.createElement('div');
+    note.className = 'note';
+    note.textContent = 'Blend > 0 gives a smooth (fillet-like) boolean.';
+    propBody.appendChild(note);
+  }
+}
+
+// ---- sketch mode -------------------------------------------------------
+function setHint() {
+  if (state.sketchMode) {
+    const tool = state.tool === 'rect' ? 'rectangle' : 'circle';
+    let pos = '';
+    if (state.hover) {
+      const [lu, lv] = PLANES[state.plane].labels;
+      pos = ` — ${lu}: ${state.hover[0]}, ${lv}: ${state.hover[1]}`;
+    }
+    hintEl.textContent = `Sketch on ${state.plane}: left-drag to draw a ${tool} · right-drag pan · wheel zoom · Esc to finish${pos}`;
+  } else {
+    hintEl.textContent = 'Orbit: left-drag · Pan: right-drag · Zoom: wheel';
+  }
+}
+
+function enterSketch(plane) {
+  state.sketchMode = true;
+  state.plane = plane;
+  planePick.classList.add('hidden');
+  sketchTools.classList.remove('hidden');
+  btnSketch.classList.add('active');
+  planeLabel.textContent = plane;
+
+  // snap camera normal to the plane, keeping current distance
+  const n = PLANES[plane].normal;
+  const dist = camera.position.distanceTo(controls.target);
+  const t = controls.target.clone();
+  const target = t.clone().sub(n.clone().multiplyScalar(t.dot(n))); // project target onto plane
+  const pos = target.clone().add(n.clone().multiplyScalar(dist));
+  if (plane === 'XZ') pos.z += dist * 0.001; // avoid up-vector degeneracy looking straight down Y
+  flyTo(pos, target);
+  setHint();
+}
+
+function exitSketch() {
+  state.sketchMode = false;
+  state.drag = null;
+  state.hover = null;
+  sketchTools.classList.add('hidden');
+  planePick.classList.add('hidden');
+  btnSketch.classList.remove('active');
+  setHint();
+}
+
+btnSketch.addEventListener('click', () => {
+  if (state.sketchMode) { exitSketch(); return; }
+  planePick.classList.toggle('hidden');
+});
+for (const b of planePick.querySelectorAll('button')) {
+  b.addEventListener('click', () => enterSketch(b.dataset.plane));
+}
+btnFinish.addEventListener('click', exitSketch);
+
+function setTool(tool) {
+  state.tool = tool;
+  toolRect.classList.toggle('active', tool === 'rect');
+  toolCircle.classList.toggle('active', tool === 'circle');
+  setHint();
+}
+toolRect.addEventListener('click', () => setTool('rect'));
+toolCircle.addEventListener('click', () => setTool('circle'));
+
+btnExtrude.addEventListener('click', () => {
+  const f = state.selected;
+  if (!f || f.type !== 'sketch') return;
+  const ex = addExtrudeFeature(f, 20, false);
+  select(ex);
+  rebuildAll();
+});
+
+btnIso.addEventListener('click', () => {
+  flyTo(new THREE.Vector3(95, 75, 95), new THREE.Vector3(0, 10, 0));
+});
+
+// ---- camera fly animation ----
+let camAnim = null;
+function flyTo(pos, target) {
+  camAnim = {
+    t: 0,
+    p0: camera.position.clone(), p1: pos,
+    t0: controls.target.clone(), t1: target
+  };
+}
+
+// ---- pointer input on the viewport ----
+const raycaster = new THREE.Raycaster();
+const planeMath = new THREE.Plane();
+const hitPoint = new THREE.Vector3();
+
+function mouseToPlane(ev) {
+  const r = viewportEl.getBoundingClientRect();
+  const ndc = new THREE.Vector2(
+    ((ev.clientX - r.left) / r.width) * 2 - 1,
+    -((ev.clientY - r.top) / r.height) * 2 + 1
+  );
+  raycaster.setFromCamera(ndc, camera);
+  planeMath.set(PLANES[state.plane].normal, 0);
+  if (!raycaster.ray.intersectPlane(planeMath, hitPoint)) return null;
+  const [u, v] = PLANES[state.plane].from(hitPoint);
+  return [Math.round(u), Math.round(v)];   // snap to 1 unit
+}
+
+viewportEl.addEventListener('contextmenu', e => e.preventDefault());
+
+// capture phase so a sketch left-drag never reaches OrbitControls
+viewportEl.addEventListener('pointerdown', (ev) => {
+  if (!state.sketchMode || ev.button !== 0 || camAnim) return;
+  const p = mouseToPlane(ev);
+  if (!p) return;
+  ev.stopPropagation();
+  state.drag = { x0: p[0], y0: p[1], x1: p[0], y1: p[1] };
+  viewportEl.setPointerCapture(ev.pointerId);
+}, true);
+
+viewportEl.addEventListener('pointermove', (ev) => {
+  if (!state.sketchMode) return;
+  const p = mouseToPlane(ev);
+  state.hover = p;
+  if (state.drag && p) { state.drag.x1 = p[0]; state.drag.y1 = p[1]; }
+  setHint();
+});
+
+viewportEl.addEventListener('pointerup', (ev) => {
+  if (!state.drag) return;
+  const d = state.drag;
+  state.drag = null;
+  let shape = null;
+  if (state.tool === 'rect') {
+    const w = Math.abs(d.x1 - d.x0), h = Math.abs(d.y1 - d.y0);
+    if (w >= 1 && h >= 1) {
+      shape = { kind: 'rect', cx: (d.x0 + d.x1) / 2, cy: (d.y0 + d.y1) / 2, w, h };
+    }
+  } else {
+    const r = Math.hypot(d.x1 - d.x0, d.y1 - d.y0);
+    if (r >= 1) shape = { kind: 'circle', cx: d.x0, cy: d.y0, r: Math.round(r) };
+  }
+  if (shape) {
+    const f = addSketchFeature(state.plane, shape);
+    select(f);
+    rebuildAll();   // no solid yet, but keeps everything consistent
+  }
+});
+
+window.addEventListener('keydown', (ev) => {
+  if (ev.target.tagName === 'INPUT' || ev.target.tagName === 'SELECT') return;
+  if (ev.key === 'Escape') {
+    if (state.drag) state.drag = null;
+    else if (state.sketchMode) exitSketch();
+    else planePick.classList.add('hidden');
+  } else if (ev.key === 'Delete' && state.selected) {
+    removeFeature(state.selected);
+  }
+});
+
+/* ---- 2D overlay: sketch outlines, live dimensions, axis gizmo ---- */
+let cssW = 1, cssH = 1, dpr = 1;
+
+function projectToScreen(wp) {
+  const v = wp.clone().project(camera);
+  return [(v.x * 0.5 + 0.5) * cssW, (-v.y * 0.5 + 0.5) * cssH, v.z];
+}
+
+function shapePath(plane, shape) {
+  const P = PLANES[plane];
+  const pts = [];
+  if (shape.kind === 'rect') {
+    const { cx, cy, w, h } = shape;
+    const cs = [[cx - w / 2, cy - h / 2], [cx + w / 2, cy - h / 2], [cx + w / 2, cy + h / 2], [cx - w / 2, cy + h / 2]];
+    for (const [u, v] of cs) pts.push(projectToScreen(P.toWorld(u, v)));
+  } else {
+    const N = 48;
+    for (let i = 0; i < N; i++) {
+      const a = (i / N) * Math.PI * 2;
+      pts.push(projectToScreen(P.toWorld(shape.cx + Math.cos(a) * shape.r, shape.cy + Math.sin(a) * shape.r)));
+    }
+  }
+  return pts;
+}
+
+function strokePts(pts, color, lw, dash) {
+  if (pts.some(p => p[2] > 1)) return; // behind camera
+  octx.beginPath();
+  pts.forEach((p, i) => i ? octx.lineTo(p[0], p[1]) : octx.moveTo(p[0], p[1]));
+  octx.closePath();
+  octx.strokeStyle = color;
+  octx.lineWidth = lw;
+  octx.setLineDash(dash || []);
+  octx.stroke();
+  octx.setLineDash([]);
+}
+
+function dimLabel(text, x, y) {
+  octx.font = '12px Consolas, monospace';
+  const w = octx.measureText(text).width + 12;
+  octx.fillStyle = 'rgba(20,22,28,0.9)';
+  octx.fillRect(x, y - 9, w, 19);
+  octx.fillStyle = '#ffd28a';
+  octx.fillText(text, x + 6, y + 5);
+}
+
+function tempShapeFromDrag(d) {
+  if (state.tool === 'rect') {
+    return { kind: 'rect', cx: (d.x0 + d.x1) / 2, cy: (d.y0 + d.y1) / 2, w: Math.abs(d.x1 - d.x0), h: Math.abs(d.y1 - d.y0) };
+  }
+  return { kind: 'circle', cx: d.x0, cy: d.y0, r: Math.hypot(d.x1 - d.x0, d.y1 - d.y0) };
+}
+
+function drawOverlay() {
+  octx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  octx.clearRect(0, 0, cssW, cssH);
+
+  // sketch-plane border while sketching
+  if (state.sketchMode) {
+    const P = PLANES[state.plane], E = 80;
+    const border = [[-E, -E], [E, -E], [E, E], [-E, E]].map(([u, v]) => projectToScreen(P.toWorld(u, v)));
+    strokePts(border, 'rgba(79,142,247,0.35)', 1, [6, 5]);
+  }
+
+  // existing sketch outlines: visible while sketching on that plane, or when selected / parent of selection
+  const sel = state.selected;
+  for (const f of doc.features) {
+    if (f.type !== 'sketch') continue;
+    const isSel = sel === f || (sel && sel.type === 'extrude' && sel.sketchId === f.id);
+    const visible = isSel || (state.sketchMode && f.plane === state.plane);
+    if (!visible) continue;
+    strokePts(shapePath(f.plane, f.shape), isSel ? '#ffb347' : 'rgba(111,183,255,0.85)', isSel ? 2 : 1.4);
+  }
+
+  // live shape being dragged + dimensions
+  if (state.drag) {
+    const d = state.drag;
+    const shape = tempShapeFromDrag(d);
+    const ok = shape.kind === 'rect' ? (shape.w >= 1 && shape.h >= 1) : shape.r >= 1;
+    if (ok) {
+      strokePts(shapePath(state.plane, shape), '#7fd0ff', 1.6);
+      const cur = projectToScreen(PLANES[state.plane].toWorld(d.x1, d.y1));
+      const text = shape.kind === 'rect'
+        ? `${shape.w} × ${shape.h}`
+        : `R ${Math.round(shape.r)}`;
+      dimLabel(text, cur[0] + 14, cur[1] - 10);
+    }
+  }
+
+  // axis gizmo (bottom-left)
+  const ox = 52, oy = cssH - 52, L = 30;
+  const invQ = camera.quaternion.clone().invert();
+  const axes = [
+    [new THREE.Vector3(1, 0, 0), '#e5484d', 'X'],
+    [new THREE.Vector3(0, 1, 0), '#46c46e', 'Y'],
+    [new THREE.Vector3(0, 0, 1), '#4f8ef7', 'Z']
+  ];
+  octx.font = 'bold 11px "Segoe UI", sans-serif';
+  for (const [dir, color, label] of axes) {
+    const v = dir.clone().applyQuaternion(invQ);
+    const dx = v.x * L, dy = -v.y * L;
+    octx.strokeStyle = color;
+    octx.lineWidth = 2;
+    octx.beginPath();
+    octx.moveTo(ox, oy);
+    octx.lineTo(ox + dx, oy + dy);
+    octx.stroke();
+    octx.fillStyle = color;
+    octx.fillText(label, ox + dx * 1.28 - 3, oy + dy * 1.28 + 4);
+  }
+}
+
+/* ---- resize ---- */
+function resize() {
+  const r = viewportEl.getBoundingClientRect();
+  cssW = Math.max(1, r.width);
+  cssH = Math.max(1, r.height);
+  renderer.setSize(cssW, cssH, false);
+  dpr = Math.min(window.devicePixelRatio, 2);
+  overlayCanvas.width = Math.round(cssW * dpr);
+  overlayCanvas.height = Math.round(cssH * dpr);
+  camera.aspect = cssW / cssH;
+  camera.updateProjectionMatrix();
+  const db = new THREE.Vector2();
+  renderer.getDrawingBufferSize(db);
+  uniforms.uRes.value.copy(db);
+  const tanY = Math.tan(THREE.MathUtils.degToRad(camera.fov * 0.5));
+  uniforms.uTanY.value = tanY;
+  uniforms.uTanX.value = tanY * camera.aspect;
+}
+new ResizeObserver(resize).observe(viewportEl);
+resize();
+
+/* ---- main loop ---- */
+const clock = new THREE.Clock();
+const tmp = new THREE.Vector3();
+
+function frame() {
+  requestAnimationFrame(frame);
+  const dt = clock.getDelta();
+
+  if (camAnim) {
+    camAnim.t = Math.min(1, camAnim.t + dt / 0.4);
+    const s = camAnim.t * camAnim.t * (3 - 2 * camAnim.t);
+    camera.position.lerpVectors(camAnim.p0, camAnim.p1, s);
+    controls.target.lerpVectors(camAnim.t0, camAnim.t1, s);
+    if (camAnim.t >= 1) camAnim = null;
+  }
+  controls.enabled = !camAnim;
+  controls.enableRotate = !state.sketchMode;
+  controls.update();
+
+  camera.updateMatrixWorld();
+  const m = camera.matrixWorld.elements;
+  uniforms.uCamPos.value.copy(camera.position);
+  uniforms.uCamRight.value.set(m[0], m[1], m[2]);
+  uniforms.uCamUp.value.set(m[4], m[5], m[6]);
+  uniforms.uCamFwd.value.set(-m[8], -m[9], -m[10]);
+
+  renderer.render(quadScene, quadCam);
+  drawOverlay();
+}
+
+/* ---- seed a small demo model so there's something on screen ---- */
+(function seed() {
+  const s1 = addSketchFeature('XZ', { kind: 'rect', cx: 0, cy: 0, w: 60, h: 40 });
+  const e1 = addExtrudeFeature(s1, 22, false);
+  e1.blend = 0;
+  const s2 = addSketchFeature('XZ', { kind: 'circle', cx: 0, cy: 0, r: 10 });
+  const c1 = addExtrudeFeature(s2, 30, true);
+  c1.blend = 2.5;
+})();
+
+rebuildAll();
+setHint();
+frame();
+</script>
+</body>
+</html>
