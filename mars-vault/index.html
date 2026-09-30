@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Mars Tensile Vault | 3D</title>
+  <link rel="icon" type="image/jpeg" href="../pfp.jpg">
+  <style>
+    html, body { margin: 0; height: 100%; background: #c9b39c; overflow: hidden; font-family: Consolas, monospace; }
+    canvas { display: block; }
+    #ui { position: fixed; top: 12px; left: 12px; display: flex; gap: 8px; align-items: center; flex-wrap: wrap;
+          background: rgba(0, 0, 0, 0.72); color: #fff; border: 1px solid #252525; padding: 8px 10px; border-radius: 8px; font-size: 13px; max-width: calc(100vw - 44px); }
+    #ui select, #ui button { background: #000; color: #fff; border: 1px solid #444; font-family: inherit; border-radius: 5px; padding: 4px 6px; font-size: 13px; }
+    #ui a { color: #ff3b30; text-decoration: none; }
+    #help { color: #b8b8b8; }
+    #loading { position: fixed; inset: 0; display: grid; place-items: center; color: #3b2a1c; font-size: 15px; pointer-events: none; }
+  </style>
+  <script type="importmap">
+    { "imports": {
+        "three": "https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js",
+        "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.170.0/examples/jsm/"
+    } }
+  </script>
+</head>
+<body>
+  <div id="ui">
+    <a href="../index.html">&larr; home</a>
+    <strong>Mars Tensile Vault</strong>
+    <select id="cams"><option value="">Viewpoints…</option></select>
+    <button id="walk" title="Fly with WASD / QE, drag to look">Fly</button>
+    <span id="help">drag to orbit · scroll to zoom · right-drag to pan</span>
+  </div>
+  <div id="loading">Loading the vault… (~15 MB)</div>
+  <script type="module" src="viewer.js?9"></script>
+</body>
+</html>
