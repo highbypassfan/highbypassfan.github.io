@@ -14,7 +14,8 @@ const info = await (await fetch(asset('scene.json'))).json();
 const b2t = (v) => new THREE.Vector3(v[0], v[2], -v[1]);
 
 const renderer = new THREE.WebGLRenderer({ antialias: true, logarithmicDepthBuffer: true });
-const small = matchMedia('(pointer: coarse)').matches || Math.min(innerWidth, innerHeight) < 600;
+const touch = matchMedia('(pointer: coarse)').matches;
+const small = touch || Math.min(innerWidth, innerHeight) < 600;
 renderer.setPixelRatio(Math.min(window.devicePixelRatio, small ? 1.25 : 2));
 renderer.setSize(window.innerWidth, window.innerHeight);
 renderer.toneMapping = THREE.AgXToneMapping;
@@ -22,7 +23,7 @@ renderer.toneMappingExposure = Math.pow(2, info.exposure_ev ?? 0.9);
 document.body.appendChild(renderer.domElement);
 
 const scene = new THREE.Scene();
-const FOG = new THREE.Color(0xc8b09a);
+const FOG = new THREE.Color(0xc2b3a8);
 const camera = new THREE.PerspectiveCamera(50, window.innerWidth / window.innerHeight, 0.5, 400000);
 
 // Sky: equirectangular Cycles render (world + haze), shown untonemapped.
@@ -99,10 +100,11 @@ const groundMat = new THREE.ShaderMaterial({
 });
 groundMat.toneMapped = false;
 
-// Membrane film: translucent, with welded bay seams and Kevlar lines from world position.
+// Membrane film: tan, fairly opaque and faintly self-lit like the sunlit laminate in the renders,
+// with welded bay seams and Kevlar lines from world position.
 function membraneMat() {
-  const m = new THREE.MeshStandardMaterial({ color: 0xf4efe6, roughness: 0.25, transparent: true, opacity: 0.22,
-                                             side: THREE.DoubleSide, depthWrite: false });
+  const m = new THREE.MeshStandardMaterial({ color: 0xdcc8ad, emissive: 0x5a4632, roughness: 0.55, transparent: true,
+                                             opacity: 0.42, side: THREE.DoubleSide, depthWrite: false });
   m.onBeforeCompile = (sh) => {
     sh.vertexShader = sh.vertexShader.replace('#include <common>', '#include <common>\nvarying vec3 vW;')
       .replace('#include <worldpos_vertex>', '#include <worldpos_vertex>\nvW = (modelMatrix * vec4(transformed, 1.0)).xyz;');
@@ -115,7 +117,14 @@ function membraneMat() {
         float fw = fwidth(q.x) * 0.65;
         float kev = (1.0 - smoothstep(0.02, 0.02 + fw, min(k.x, k.y))) * (1.0 - smoothstep(40.0, 400.0, length(vW - cameraPosition)));
         diffuseColor.rgb = mix(diffuseColor.rgb, vec3(0.78, 0.55, 0.22), kev * 0.6);
-        diffuseColor.a = clamp(diffuseColor.a + seam * 0.45 + kev * 0.25, 0.0, 1.0);`);
+        diffuseColor.a = clamp(diffuseColor.a + seam * 0.35 + kev * 0.2, 0.0, 1.0);`)
+      .replace('#include <emissivemap_fragment>', `#include <emissivemap_fragment>
+        // Sunlight transmitted through the film: facets facing the sun glow more (pillow shading from below).
+        vec3 nW = normalize(cross(dFdx(vW), dFdy(vW)));
+        float tr = abs(dot(nW, uSun));
+        totalEmissiveRadiance *= 0.35 + 1.6 * tr * tr;`)
+      .replace('#include <common>', '#include <common>\nuniform vec3 uSun;');
+    sh.uniforms.uSun = { value: sunDir };
   };
   return m;
 }
@@ -138,13 +147,37 @@ root.traverse((o) => {
   plain.get(key).push(o);
 });
 root.updateMatrixWorld(true);
+
+// Terrain height lookup (Blender XY -> height) from the near terrain grid, for walking and the solar rows.
+const H = (() => {
+  let mesh = null;
+  root.traverse((o) => { if (o.isMesh && /TERRAIN_?near/i.test(o.name + ' ' + (o.parent?.name || ''))) mesh = o; });
+  const [x0, y0, size] = info.near;
+  if (!mesh) return () => 0;
+  const pos = mesh.geometry.attributes.position, v = new THREE.Vector3();
+  const n = Math.round(Math.sqrt(pos.count)) - 1, step = size / n, r = n + 1;
+  const grid = new Float32Array(r * r);
+  for (let k = 0; k < pos.count; k++) {
+    v.fromBufferAttribute(pos, k).applyMatrix4(mesh.matrixWorld);
+    const i = Math.round((v.x - x0) / step), j = Math.round((-v.z - y0) / step);
+    if (i >= 0 && j >= 0 && i <= n && j <= n) grid[j * r + i] = v.y;
+  }
+  return (bx, by) => {
+    const fx = (bx - x0) / step, fy = (by - y0) / step;
+    if (fx < 0 || fy < 0 || fx >= n || fy >= n) return 0;
+    const i = Math.floor(fx), j = Math.floor(fy), tx = fx - i, ty = fy - j;
+    const a = grid[j * r + i], b = grid[j * r + i + 1], c = grid[(j + 1) * r + i], d = grid[(j + 1) * r + i + 1];
+    return (a * (1 - tx) + b * tx) * (1 - ty) + (c * (1 - tx) + d * tx) * ty;
+  };
+})();
+
 const hash = (v) => { const s = Math.sin(v.x * 12.9898 + v.z * 78.233) * 43758.5453; return s - Math.floor(s); };
 const tints = [0xffffff, 0xf4f0ea, 0xeee4d8, 0xe4d6c8, 0xe2e8e2, 0xfcfbf9, 0xd4d6da, 0xeee0cf].map((c) => new THREE.Color(c));
 const TILE = 600;
 const tileKey = (p) => Math.floor(p.x / TILE) + ',' + Math.floor(p.z / TILE);
 
-// Chunk instances into ~300 m tiles so frustum culling skips off-screen tiles and
-// three.js can draw near tiles first (hidden fragments are rejected by the depth test).
+// Chunk instances into tiles so frustum culling skips off-screen tiles and three.js can
+// draw near tiles first (hidden fragments are then rejected by the depth test).
 function chunked(geometry, material, matrices, colors, name) {
   const tiles = new Map();
   const p = new THREE.Vector3();
@@ -205,7 +238,6 @@ function updateLods(force) {
     if (!force && L.last.distanceToSquared(camera.position) < 25) continue;
     L.last.copy(camera.position);
     let n = 0, f = 0;
-    const yaw = Math.atan2(camera.position.x, camera.position.z);
     for (let i = 0; i < L.all.length; i++) {
       const d = L.pos[i].distanceTo(camera.position);
       if (d < L.range) { for (const m of L.near) m.setMatrixAt(n, L.all[i]); n++; }
@@ -237,7 +269,7 @@ for (const [name, parts] of byNode) {
     const geo = mergeGeometries([cable.toNonIndexed(), ring.toNonIndexed()]);
     lodGroup(parts, geo, new THREE.MeshStandardMaterial({ color: 0x8a8b8d, metalness: 0.8, roughness: 0.45 }), 350, false);
   } else if (name.startsWith('WEB_people')) {
-    // Each pose kind is its own node; LOD each separately with a 2D quad stand-in.
+    // Each pose kind is its own node; LOD each separately with a camera-facing 2D stand-in.
     const quad = new THREE.PlaneGeometry(0.5, 1.75).translate(0, 0.875, 0);
     const shirts = [0xd8d8d8, 0x33477a, 0xa8302a, 0x6d7445, 0xc8781a, 0x2f8a8a, 0x505054, 0xcdb48e].map((c) => new THREE.Color(c));
     const cols = Array.from({ length: parts[0].count }, (_, i) => shirts[i % shirts.length]);
@@ -270,6 +302,54 @@ for (const [name, parts] of byNode) {
     }
   }
 }
+
+// Solar farm: east/west tent rows generated from the same layout rules as the Blender scene
+// (tools/legacy/photoreal_solar.py), laid on the terrain.
+{
+  const F = info.solar, tilt = THREE.MathUtils.degToRad(F.tilt_deg);
+  const run = F.panel * Math.cos(tilt), ridge = F.low + F.panel * Math.sin(tilt), half = F.seg / 2;
+  const P = [], U = [];
+  for (const sgn of [-1, 1]) {            // two sloped module rows meeting at the ridge
+    const q = [[sgn * run, F.low, -half, 0, 0], [0, ridge, -half, 0, 1], [0, ridge, half, F.seg, 1], [sgn * run, F.low, half, F.seg, 0]];
+    for (const k of [0, 1, 2, 0, 2, 3]) { P.push(q[k][0], q[k][1], q[k][2]); U.push(q[k][3], q[k][4]); }
+  }
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.Float32BufferAttribute(P, 3));
+  g.setAttribute('uv', new THREE.Float32BufferAttribute(U, 2));
+  g.computeVertexNormals();
+  const cv = document.createElement('canvas'); cv.width = 64; cv.height = 128;
+  const cx = cv.getContext('2d');
+  cx.fillStyle = '#9a9ca0'; cx.fillRect(0, 0, 64, 128);                    // module frame
+  for (let r = 0; r < 12; r++) for (let c = 0; c < 6; c++) {
+    cx.fillStyle = (r + c) % 2 ? '#0b1430' : '#0e1838';
+    cx.fillRect(3 + c * 9.7, 3 + r * 10.2, 8.9, 9.4);
+  }
+  const map = new THREE.CanvasTexture(cv);
+  map.colorSpace = THREE.SRGBColorSpace; map.wrapS = THREE.RepeatWrapping; map.anisotropy = 8;
+  const mat = new THREE.MeshStandardMaterial({ map, color: 0xd9c9b8, roughness: 0.3, metalness: 0.1, side: THREE.DoubleSide });
+  const w = F.x1 - F.x0, h = F.y1 - F.y0;
+  const nx = Math.floor(w / F.pitch), ny = Math.floor(h / F.seg), dx = w / (nx - 1), dy = h / (ny - 1);
+  const band = (c, period, hw, off) => { const f = ((c - off) % period + period) % period; return Math.min(f, period - f) < hw; };
+  const mats = [], e = new THREE.Euler(), m = new THREE.Matrix4();
+  for (let j = 0; j < ny; j++) for (let i = 0; i < nx; i++) {
+    const x = F.x0 + i * dx, y = F.y0 + j * dy;
+    if (band(y, F.track_every, F.track_half, F.y0 + F.track_every / 2) || band(x, w / 2, F.spine_half, F.x0 + w / 2)) continue;
+    const z = H(x, y), pitch = Math.atan2(H(x, y + half) - H(x, y - half), F.seg);
+    m.makeRotationFromEuler(e.set(pitch, 0, 0)).setPosition(x, z, -y);
+    mats.push(m.clone());
+  }
+  chunked(g, mat, mats, null, 'solar rows');
+  // Inverter skids at the track junctions.
+  const skid = new THREE.BoxGeometry(7.8, 2.9, 2.8).translate(0, 1.45, 0);
+  const nkx = Math.floor(w / F.skid_every), nky = Math.floor(h / F.skid_every);
+  const sx = (w - F.skid_every) / (nkx - 1), sy = (h - F.skid_every) / (nky - 1);
+  const skids = [];
+  for (let j = 0; j < nky; j++) for (let i = 0; i < nkx; i++) {
+    const x = F.x0 + F.skid_every / 2 + i * sx, y = F.y0 + F.skid_every / 2 + j * sy;
+    skids.push(new THREE.Matrix4().setPosition(x, H(x, y), -y));
+  }
+  chunked(skid, new THREE.MeshStandardMaterial({ color: 0xb8b8b4, roughness: 0.5 }), skids, null, 'inverter skids');
+}
 scene.add(root);
 document.getElementById('loading').remove();
 window.__vault = { renderer, scene, camera, THREE };
@@ -286,44 +366,106 @@ function goTo(c) {
   const dist = Math.max(20, p.y * 2);
   controls.target.copy(p).addScaledVector(d, dist);
   controls.update();
+  camera.lookAt(controls.target);
+  if (mode === 'Walk') setMode('Walk');
 }
+
+// Modes: orbit, fly (WASD/QE) and walk (eye height above the terrain). Touch devices get two joysticks.
+const MODES = ['Orbit', 'Fly', 'Walk'];
+const HELP = {
+  Orbit: 'drag to orbit · scroll to zoom · right-drag to pan',
+  Fly: 'WASD move · Q/E down/up · shift faster · drag to look',
+  Walk: 'WASD walk · shift run · drag to look',
+};
+let mode = 'Orbit';
+const keys = new Set();
+const modeBtn = document.getElementById('walk');
+const pads = document.getElementById('pads');
+function setMode(next) {
+  mode = next;
+  controls.enabled = mode === 'Orbit';
+  if (mode === 'Orbit') {            // orbit around a point ahead of the current view
+    controls.target.copy(camera.position).add(new THREE.Vector3(0, 0, -Math.max(20, camera.position.y)).applyQuaternion(camera.quaternion));
+    controls.update();
+  }
+  modeBtn.textContent = MODES[(MODES.indexOf(mode) + 1) % MODES.length];
+  document.getElementById('help').textContent = touch && mode !== 'Orbit' ? 'left stick look · right stick move' : HELP[mode];
+  pads.hidden = !(touch && mode !== 'Orbit');
+  if (mode === 'Walk') {
+    camera.position.y = H(camera.position.x, -camera.position.z) + 1.7;
+    const eu = new THREE.Euler().setFromQuaternion(camera.quaternion, 'YXZ'); eu.x = 0; eu.z = 0;
+    camera.quaternion.setFromEuler(eu);
+  }
+}
+modeBtn.onclick = () => setMode(MODES[(MODES.indexOf(mode) + 1) % MODES.length]);
 const sel = document.getElementById('cams');
 info.cameras.forEach((c, i) => sel.add(new Option(c.name, i)));
 sel.onchange = () => sel.value !== '' && goTo(info.cameras[+sel.value]);
 goTo(info.cameras.find((c) => c.name.startsWith('07')) || info.cameras[0]);
+setMode('Orbit');
 updateLods(true);
 
-// Fly mode: WASD/QE + drag to look.
-let fly = false;
-const keys = new Set();
-const flyBtn = document.getElementById('walk');
-flyBtn.onclick = () => {
-  fly = !fly; controls.enabled = !fly; flyBtn.textContent = fly ? 'Orbit' : 'Fly';
-  document.getElementById('help').textContent = fly ? 'WASD move · Q/E down/up · shift faster · drag to look' : 'drag to orbit · scroll to zoom · right-drag to pan';
-};
-addEventListener('keydown', (e) => keys.add(e.key.toLowerCase()));
+addEventListener('keydown', (e) => { if (e.target === document.body) keys.add(e.key.toLowerCase()); });
 addEventListener('keyup', (e) => keys.delete(e.key.toLowerCase()));
+addEventListener('blur', () => keys.clear());
+function look(dx, dy) {
+  const eu = new THREE.Euler().setFromQuaternion(camera.quaternion, 'YXZ');
+  eu.y -= dx; eu.x = Math.max(-1.5, Math.min(1.5, eu.x - dy)); eu.z = 0;
+  camera.quaternion.setFromEuler(eu);
+}
 let dragging = false;
 renderer.domElement.addEventListener('pointerdown', () => { dragging = true; });
 addEventListener('pointerup', () => { dragging = false; });
-addEventListener('pointermove', (e) => {
-  if (!fly || !dragging) return;
-  const eu = new THREE.Euler().setFromQuaternion(camera.quaternion, 'YXZ');
-  eu.y -= e.movementX * 0.003; eu.x = Math.max(-1.5, Math.min(1.5, eu.x - e.movementY * 0.003));
-  camera.quaternion.setFromEuler(eu);
-});
+addEventListener('pointermove', (e) => { if (mode !== 'Orbit' && dragging) look(e.movementX * 0.003, e.movementY * 0.003); });
+
+// Joysticks: each returns a vector in [-1, 1]^2 while held.
+function stick(el) {
+  const knob = el.querySelector('.knob'), v = { x: 0, y: 0 }, R = 50;
+  let id = null, cx = 0, cy = 0;
+  const move = (e) => {
+    if (e.pointerId !== id) return;
+    let x = e.clientX - cx, y = e.clientY - cy;
+    const l = Math.hypot(x, y);
+    if (l > R) { x *= R / l; y *= R / l; }
+    v.x = x / R; v.y = y / R;
+    knob.style.transform = `translate(${x}px, ${y}px)`;
+  };
+  const end = (e) => { if (e.pointerId !== id) return; id = null; v.x = v.y = 0; knob.style.transform = ''; };
+  el.addEventListener('pointerdown', (e) => {
+    id = e.pointerId; el.setPointerCapture(id);
+    const r = el.getBoundingClientRect(); cx = r.left + r.width / 2; cy = r.top + r.height / 2;
+    move(e); e.preventDefault(); e.stopPropagation();
+  });
+  el.addEventListener('pointermove', move);
+  el.addEventListener('pointerup', end);
+  el.addEventListener('pointercancel', end);
+  return v;
+}
+const lookStick = stick(document.getElementById('lookPad'));
+const moveStick = stick(document.getElementById('movePad'));
 
 addEventListener('resize', () => {
   camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix(); renderer.setSize(innerWidth, innerHeight);
 });
 const clock = new THREE.Clock();
 renderer.setAnimationLoop(() => {
-  const dt = clock.getDelta();
-  if (fly) {
-    const v = new THREE.Vector3((keys.has('d') - keys.has('a')), (keys.has('e') - keys.has('q')), (keys.has('s') - keys.has('w')));
-    const speed = (keys.has('shift') ? 120 : 15) * Math.max(1, camera.position.y / 20);
-    camera.position.add(v.applyQuaternion(camera.quaternion).multiplyScalar(speed * dt));
-  } else controls.update();
+  const dt = Math.min(clock.getDelta(), 0.1);
+  if (mode === 'Orbit') controls.update();
+  else {
+    look(lookStick.x * 1.8 * dt, lookStick.y * 1.4 * dt);
+    const kx = keys.has('d') - keys.has('a') + moveStick.x, kz = keys.has('s') - keys.has('w') + moveStick.y;
+    const run = keys.has('shift') || Math.hypot(moveStick.x, moveStick.y) > 0.95;
+    if (mode === 'Fly') {
+      const v = new THREE.Vector3(kx, keys.has('e') - keys.has('q'), kz);
+      const speed = (run ? 120 : 15) * Math.max(1, camera.position.y / 20);
+      camera.position.add(v.applyQuaternion(camera.quaternion).multiplyScalar(speed * dt));
+    } else {
+      const yaw = new THREE.Euler().setFromQuaternion(camera.quaternion, 'YXZ').y;
+      const v = new THREE.Vector3(kx, 0, kz).applyAxisAngle(THREE.Object3D.DEFAULT_UP, yaw);
+      camera.position.addScaledVector(v, (run ? 6 : 1.6) * dt);
+      camera.position.y = H(camera.position.x, -camera.position.z) + 1.7;
+    }
+  }
   updateLods(false);
   renderer.render(scene, camera);
 });

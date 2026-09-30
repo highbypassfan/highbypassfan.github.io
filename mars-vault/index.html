@@ -2,17 +2,25 @@
 <html lang="en">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>Mars Tensile Vault | 3D</title>
   <link rel="icon" type="image/jpeg" href="../pfp.jpg">
   <style>
-    html, body { margin: 0; height: 100%; background: #c9b39c; overflow: hidden; font-family: Consolas, monospace; }
-    canvas { display: block; }
+    html, body { margin: 0; height: 100%; background: #c9b39c; overflow: hidden; font-family: Consolas, monospace;
+                 overscroll-behavior: none; -webkit-user-select: none; user-select: none; }
+    canvas { display: block; touch-action: none; }
     #ui { position: fixed; top: 12px; left: 12px; display: flex; gap: 8px; align-items: center; flex-wrap: wrap;
           background: rgba(0, 0, 0, 0.72); color: #fff; border: 1px solid #252525; padding: 8px 10px; border-radius: 8px; font-size: 13px; max-width: calc(100vw - 44px); }
     #ui select, #ui button { background: #000; color: #fff; border: 1px solid #444; font-family: inherit; border-radius: 5px; padding: 4px 6px; font-size: 13px; }
     #ui a { color: #ff3b30; text-decoration: none; }
     #help { color: #b8b8b8; }
+    #pads[hidden] { display: none; }
+    .pad { position: fixed; bottom: 28px; width: 120px; height: 120px; border-radius: 50%; touch-action: none;
+           background: rgba(0, 0, 0, 0.28); border: 1px solid rgba(255, 255, 255, 0.35); }
+    .pad .knob { position: absolute; left: 35px; top: 35px; width: 50px; height: 50px; border-radius: 50%;
+                 background: rgba(255, 255, 255, 0.55); pointer-events: none; }
+    .pad span { position: absolute; top: -20px; width: 100%; text-align: center; color: #fff; font-size: 11px; opacity: 0.7; }
+    #lookPad { left: 28px; } #movePad { right: 28px; }
     #loading { position: fixed; inset: 0; display: grid; place-items: center; color: #3b2a1c; font-size: 15px; pointer-events: none; }
   </style>
   <script type="importmap">
@@ -27,10 +35,14 @@
     <a href="../index.html">&larr; home</a>
     <strong>Mars Tensile Vault</strong>
     <select id="cams"><option value="">Viewpoints…</option></select>
-    <button id="walk" title="Fly with WASD / QE, drag to look">Fly</button>
+    <button id="walk" title="Switch between orbit, fly and walk">Fly</button>
     <span id="help">drag to orbit · scroll to zoom · right-drag to pan</span>
   </div>
+  <div id="pads" hidden>
+    <div class="pad" id="lookPad"><span>look</span><div class="knob"></div></div>
+    <div class="pad" id="movePad"><span>move</span><div class="knob"></div></div>
+  </div>
   <div id="loading">Loading the vault… (~15 MB)</div>
-  <script type="module" src="viewer.js?9"></script>
+  <script type="module" src="viewer.js?12"></script>
 </body>
 </html>
