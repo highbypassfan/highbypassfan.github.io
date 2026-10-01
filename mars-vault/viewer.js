@@ -363,8 +363,11 @@ for (const [name, parts] of byNode) {
     // Crowd: camera-facing 2D stand-ins at every distance (only the observer is a full model).
     const quad = new THREE.PlaneGeometry(0.5, 1.75).translate(0, 0.875, 0);
     const shirts = [0xd8d8d8, 0x33477a, 0xa8302a, 0x6d7445, 0xc8781a, 0x2f8a8a, 0x505054, 0xcdb48e].map((c) => new THREE.Color(c));
-    const cols = Array.from({ length: parts[0].count }, (_, i) => shirts[i % shirts.length]);
-    lodGroup(parts, quad, personStandIn(), -1, true, cols);
+    const mat = personStandIn();
+    for (const im of parts) {            // one instanced mesh per pose, each with its own placements
+      const cols = Array.from({ length: im.count }, (_, i) => shirts[(i * 7 + im.count) % shirts.length]);
+      lodGroup([im], quad, mat, -1, true, cols);
+    }
   } else if (name.startsWith('WEB_freight')) {
     // Box imposters: side and top renders of the real pallet load mapped onto its bounding box.
     for (const im of parts) {
@@ -452,6 +455,95 @@ scene.add(root);
 document.getElementById('loading').remove();
 window.__vault = { renderer, scene, camera, THREE, lods };
 
+// Walk collision: footprints in the ground plane, in a 16 m grid. Buildings, ships, freight,
+// skids, the rover and the observer are rotated boxes from their bounds; anchors and people
+// are circles. Anything under STEP high can be stepped over.
+const collide = (() => {
+  const CELL = 16, STEP = 0.6, R = 0.35, grid = new Map();
+  const put = (c, x0, z0, x1, z1) => {
+    for (let i = Math.floor(x0 / CELL); i <= Math.floor(x1 / CELL); i++)
+      for (let j = Math.floor(z0 / CELL); j <= Math.floor(z1 / CELL); j++) {
+        const k = i + ',' + j;
+        if (!grid.has(k)) grid.set(k, []);
+        grid.get(k).push(c);
+      }
+  };
+  const corner = new THREE.Vector3(), ax = new THREE.Vector3(), m3 = new THREE.Matrix3();
+  function box(geo, mw) {
+    if (!geo.boundingBox) geo.computeBoundingBox();
+    const b = geo.boundingBox;
+    if (b.isEmpty()) return;
+    ax.set(1, 0, 0).applyMatrix3(m3.setFromMatrix4(mw));
+    let ux = ax.x, uz = ax.z, l = Math.hypot(ux, uz);
+    if (l < 1e-6) { ux = 1; uz = 0; } else { ux /= l; uz /= l; }
+    let a0 = Infinity, a1 = -Infinity, b0 = Infinity, b1 = -Infinity, y0 = Infinity, y1 = -Infinity;
+    for (let n = 0; n < 8; n++) {
+      corner.set(n & 1 ? b.max.x : b.min.x, n & 2 ? b.max.y : b.min.y, n & 4 ? b.max.z : b.min.z).applyMatrix4(mw);
+      const a = corner.x * ux + corner.z * uz, v = -corner.x * uz + corner.z * ux;
+      a0 = Math.min(a0, a); a1 = Math.max(a1, a); b0 = Math.min(b0, v); b1 = Math.max(b1, v);
+      y0 = Math.min(y0, corner.y); y1 = Math.max(y1, corner.y);
+    }
+    const hu = (a1 - a0) / 2, hv = (b1 - b0) / 2;
+    if (y1 - y0 < STEP || Math.max(hu, hv) > 75) return;      // flat pads, or merged/composite meshes
+    const ca = (a0 + a1) / 2, cb = (b0 + b1) / 2;
+    const cx = ca * ux - cb * uz, cz = ca * uz + cb * ux, e = Math.hypot(hu, hv);
+    put({ cx, cz, ux, uz, hu, hv, y0, y1 }, cx - e, cz - e, cx + e, cz + e);
+  }
+  function circle(p, r, h) { put({ x: p.x, z: p.z, r, y0: p.y, y1: p.y + h }, p.x - r, p.z - r, p.x + r, p.z + r); }
+
+  const skip = new Set();
+  for (const L of lods) {
+    for (const m of [...L.near, L.far]) skip.add(m);
+    if (L.billboard) L.pos.forEach((p) => circle(p, 0.3, 1.8));          // people
+    else {                                                                 // anchors: the main cable
+      const g = L.near[0].geometry; g.computeBoundingBox();
+      L.pos.forEach((p) => circle(p, 0.6, g.boundingBox.max.y));
+    }
+  }
+  const mw = new THREE.Matrix4();
+  scene.traverse((o) => {
+    if (!o.isMesh || skip.has(o) || !o.visible) return;
+    if (/TERRAIN|membrane|foundation|solar rows|people|anchors/i.test(o.name + ' ' + (o.parent?.name || ''))) return;
+    if (o.isInstancedMesh) for (let i = 0; i < o.count; i++) { o.getMatrixAt(i, mw); box(o.geometry, mw.premultiply(o.matrixWorld)); }
+    else box(o.geometry, o.matrixWorld);
+  });
+
+  // Push the walker (a circle of radius R between feet and head) out of anything it overlaps.
+  return (p, feet, head) => {
+    for (let it = 0; it < 3; it++) {
+      let moved = false;
+      const i0 = Math.floor(p.x / CELL), j0 = Math.floor(p.z / CELL);
+      for (let i = i0 - 1; i <= i0 + 1; i++) for (let j = j0 - 1; j <= j0 + 1; j++) {
+        for (const c of grid.get(i + ',' + j) || []) {
+          if (feet > c.y1 - STEP || head < c.y0) continue;
+          if (c.r !== undefined) {
+            const dx = p.x - c.x, dz = p.z - c.z, d = Math.hypot(dx, dz), need = c.r + R;
+            if (d < need) {
+              const s = d > 1e-6 ? need / d : 0;
+              if (s) { p.x = c.x + dx * s; p.z = c.z + dz * s; } else p.x = c.x + need;
+              moved = true;
+            }
+            continue;
+          }
+          const dx = p.x - c.cx, dz = p.z - c.cz;
+          let a = dx * c.ux + dz * c.uz, b = -dx * c.uz + dz * c.ux;
+          const ca = Math.max(-c.hu, Math.min(c.hu, a)), cb = Math.max(-c.hv, Math.min(c.hv, b));
+          const ea = a - ca, eb = b - cb, d = Math.hypot(ea, eb);
+          if (d >= R) continue;
+          if (d > 1e-6) { a = ca + ea / d * R; b = cb + eb / d * R; }
+          else if (c.hu - Math.abs(a) < c.hv - Math.abs(b)) a = Math.sign(a || 1) * (c.hu + R);
+          else b = Math.sign(b || 1) * (c.hv + R);
+          p.x = c.cx + a * c.ux - b * c.uz; p.z = c.cz + a * c.uz + b * c.ux;
+          moved = true;
+        }
+      }
+      if (!moved) break;
+    }
+  };
+})();
+
+window.__vault.collide = collide;
+
 // Camera + controls.
 const controls = new OrbitControls(camera, renderer.domElement);
 controls.enableDamping = true;
@@ -484,7 +576,7 @@ function behindObserver() {
 // you look; Q / C or the down button lands) and Orbit. The camera never goes below the ground.
 const MODES = ['Walk / fly', 'Orbit'];
 const HELP = {
-  'Walk / fly': 'WASD move · E/space up · Q/C down · shift faster · drag to look',
+  'Walk / fly': 'click to capture the mouse (click again to release) · WASD move · E/space up · Q/C down · shift faster',
   Orbit: 'drag to orbit · scroll to zoom · right-drag to pan',
 };
 let mode = MODES[0];
@@ -495,6 +587,7 @@ const pads = document.getElementById('pads');
 function setMode(next, land = false) {
   mode = next;
   controls.enabled = mode === 'Orbit';
+  if (mode === 'Orbit' && document.pointerLockElement) document.exitPointerLock();
   if (mode === 'Orbit') {            // orbit around a point ahead of the current view
     const ahead = Math.max(20, (camera.position.y - ground(camera.position)) * 1.5);
     controls.target.copy(camera.position).add(new THREE.Vector3(0, 0, -ahead).applyQuaternion(camera.quaternion));
@@ -545,10 +638,23 @@ function look(dx, dy) {
   eu.y -= dx; eu.x = Math.max(-1.5, Math.min(1.5, eu.x - dy)); eu.z = 0;
   camera.quaternion.setFromEuler(eu);
 }
-let dragging = false;
-renderer.domElement.addEventListener('pointerdown', () => { dragging = true; });
-addEventListener('pointerup', () => { dragging = false; });
-addEventListener('pointermove', (e) => { if (mode !== 'Orbit' && dragging) look(e.movementX * 0.003, e.movementY * 0.003); });
+// Mouse look: in Walk / fly a click captures the mouse (pointer lock) and a second click
+// (or Esc) releases it; dragging also looks around while the mouse is free.
+const canvas = renderer.domElement;
+let dragging = false, downX = 0, downY = 0;
+canvas.addEventListener('pointerdown', (e) => { dragging = true; downX = e.clientX; downY = e.clientY; });
+addEventListener('pointerup', (e) => {
+  if (dragging && mode !== 'Orbit' && !touch && e.pointerType === 'mouse' && Math.hypot(e.clientX - downX, e.clientY - downY) < 5) {
+    if (document.pointerLockElement === canvas) document.exitPointerLock();
+    else canvas.requestPointerLock()?.catch?.(() => {});
+  }
+  dragging = false;
+});
+addEventListener('pointermove', (e) => {
+  if (mode === 'Orbit') return;
+  if (document.pointerLockElement === canvas) look(e.movementX * 0.0022, e.movementY * 0.0022);
+  else if (dragging) look(e.movementX * 0.003, e.movementY * 0.003);
+});
 
 // Joysticks: each returns a vector in [-1, 1]^2 while held.
 function stick(el) {
@@ -610,6 +716,8 @@ renderer.setAnimationLoop(() => {
     camera.position.y += ky * Math.max(3, alt * 0.8) * (run ? 4 : 1) * dt;
     const floor = ground(camera.position) + EYE;
     if (walking || camera.position.y < floor) camera.position.y = floor;
+    collide(camera.position, camera.position.y - EYE, camera.position.y + 0.15);
+    if (walking) camera.position.y = ground(camera.position) + EYE;
   }
   updateLods(false);
   sunDisc.position.copy(camera.position).addScaledVector(sunDir, 250000);
