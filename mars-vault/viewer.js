@@ -51,6 +51,25 @@ sun.position.copy(sunDir).multiplyScalar(1000);
 scene.add(sun, sun.target);
 scene.add(new THREE.HemisphereLight(0xe0cdb8, 0x7a5236, 0.45));
 
+// The sun itself: a small bright disc (Mars sees it ~2/3 the size it is from Earth) with a dusty halo,
+// kept at the same direction as the light and following the camera so it stays at infinity.
+const sunDisc = (() => {
+  const cv = document.createElement('canvas'); cv.width = cv.height = 256;
+  const c = cv.getContext('2d'), g = c.createRadialGradient(128, 128, 0, 128, 128, 128);
+  g.addColorStop(0, 'rgba(255,255,250,1)'); g.addColorStop(0.07, 'rgba(255,252,240,1)');
+  g.addColorStop(0.1, 'rgba(255,236,205,0.55)'); g.addColorStop(0.3, 'rgba(250,215,175,0.16)');
+  g.addColorStop(1, 'rgba(240,200,160,0)');
+  c.fillStyle = g; c.fillRect(0, 0, 256, 256);
+  const map = new THREE.CanvasTexture(cv); map.colorSpace = THREE.SRGBColorSpace;
+  const s = new THREE.Sprite(new THREE.SpriteMaterial({ map, color: 0xffffff, transparent: true, depthWrite: false,
+                                                        blending: THREE.AdditiveBlending, toneMapped: false, fog: false }));
+  s.material.color.multiplyScalar(1.6);
+  s.scale.setScalar(250000 * Math.tan(THREE.MathUtils.degToRad(4.5)));   // halo ~9 deg across, disc ~0.6 deg
+  s.renderOrder = -0.5;
+  scene.add(s);
+  return s;
+})();
+
 // Ground: unlit, baked textures picked by region, with distance fog.
 function tex(name) {
   const t = loader.load(asset(name));
@@ -60,11 +79,20 @@ function tex(name) {
   t.minFilter = THREE.LinearMipmapLinearFilter;
   return t;
 }
+// Tiling close-up ground (high-passed render of the Mars surface material, mid-grey = no change).
+function detailTex() {
+  const t = loader.load(asset('ground_detail.jpg'));
+  t.colorSpace = THREE.NoColorSpace;
+  t.wrapS = t.wrapT = THREE.RepeatWrapping;
+  t.anisotropy = renderer.capabilities.getMaxAnisotropy();
+  return t;
+}
 const groundMat = new THREE.ShaderMaterial({
   uniforms: {
     tCity: { value: tex('ground_city.jpg') }, tNear: { value: tex('ground_near.jpg') }, tFar: { value: tex('ground_far.jpg') },
     city: { value: new THREE.Vector3(...info.city) }, near: { value: new THREE.Vector3(...info.near) },
     far: { value: new THREE.Vector3(...info.far) }, fogColor: { value: FOG }, fogDensity: { value: 1.6e-5 },
+    tDetail: { value: detailTex() }, detailSize: { value: 24.0 },
   },
   vertexShader: /* glsl */`
     varying vec3 vWorld;
@@ -77,9 +105,9 @@ const groundMat = new THREE.ShaderMaterial({
       #include <logdepthbuf_vertex>
     }`,
   fragmentShader: /* glsl */`
-    uniform sampler2D tCity, tNear, tFar;
+    uniform sampler2D tCity, tNear, tFar, tDetail;
     uniform vec3 city, near, far, fogColor;
-    uniform float fogDensity;
+    uniform float fogDensity, detailSize;
     varying vec3 vWorld;
     #include <logdepthbuf_pars_fragment>
     vec2 uvIn(vec3 r, vec2 p) { return (p - r.xy) / r.z; }
@@ -93,6 +121,11 @@ const groundMat = new THREE.ShaderMaterial({
       else if (inside(un)) c = texture2D(tNear, un).rgb;
       else c = texture2D(tFar, clamp(uf, 0.0, 1.0)).rgb;
       float d = length(vWorld - cameraPosition);
+      // Two tile scales (24 m and ~9 m, rotated) hide the repeat; faded out with distance.
+      vec3 d1 = texture2D(tDetail, p / detailSize).rgb * 2.0;
+      vec2 r = mat2(0.8, -0.6, 0.6, 0.8) * p;
+      vec3 d2 = texture2D(tDetail, r / (detailSize * 0.37) + 0.31).rgb * 2.0;
+      c *= mix(vec3(1.0), d1 * mix(vec3(1.0), d2, 0.45), 1.0 - smoothstep(80.0, 600.0, d));
       float f = 1.0 - exp(-pow(d * fogDensity, 1.3));
       gl_FragColor = vec4(mix(c, fogColor, clamp(f, 0.0, 0.95)), 1.0);
       #include <colorspace_fragment>
@@ -114,8 +147,10 @@ function membraneMat() {
         vec2 bay = abs(fract(q / 50.0) - 0.5) * 50.0;           // distance from bay centre
         float seam = smoothstep(24.6, 24.9, max(bay.x, bay.y));
         vec2 k = abs(fract(q / 0.65) - 0.5) * 0.65;
-        float fw = fwidth(q.x) * 0.65;
-        float kev = (1.0 - smoothstep(0.02, 0.02 + fw, min(k.x, k.y))) * (1.0 - smoothstep(40.0, 400.0, length(vW - cameraPosition)));
+        float fw = length(fwidth(q));
+        // Lines while they are resolvable, then their average coverage (no moire), out to ~3 km.
+        float line = 1.0 - smoothstep(0.03 - fw, 0.03 + fw, min(k.x, k.y));
+        float kev = mix(line, 0.17, smoothstep(0.04, 0.25, fw)) * (1.0 - smoothstep(1500.0, 4000.0, length(vW - cameraPosition)));
         diffuseColor.rgb = mix(diffuseColor.rgb, vec3(0.78, 0.55, 0.22), kev * 0.6);
         diffuseColor.a = clamp(diffuseColor.a + seam * 0.35 + kev * 0.2, 0.0, 1.0);`)
       .replace('#include <emissivemap_fragment>', `#include <emissivemap_fragment>
@@ -260,22 +295,76 @@ function updateLods(force) {
   }
 }
 
+// Far anchor stand-in: main cable up to the splay point, the six branch wires out to the cap
+// ring, and the ring, all measured from the real anchor so the LOD swap is hard to spot.
+function anchorStandIn(parts) {
+  const box = new THREE.Box3();
+  parts.forEach((p) => { p.geometry.computeBoundingBox(); box.union(p.geometry.boundingBox); });
+  const top = box.max.y, bot = box.min.y, v = new THREE.Vector3();
+  let rRing = 0, ySplay = bot;
+  const angles = [];
+  for (const p of parts) {
+    const pos = p.geometry.attributes.position;
+    for (let i = 0; i < pos.count; i++) {
+      v.fromBufferAttribute(pos, i);
+      const rad = Math.hypot(v.x, v.z);
+      if (v.y > top - 1.5) rRing = Math.max(rRing, rad);
+      if (rad < 0.6 && v.y < top - 1.5 && v.y > bot + 2) ySplay = Math.max(ySplay, v.y);
+      if (rad > 0.8 && v.y < top - 1.5 && v.y > bot + 2) angles.push(Math.atan2(v.z, v.x));
+    }
+  }
+  rRing = Math.min(rRing, 4.2) - 0.3;
+  // Wire phase: circular mean of the wire vertices' angles modulo 60 degrees.
+  let sx = 0, sy = 0;
+  for (const a of angles) { sx += Math.cos(a * 6); sy += Math.sin(a * 6); }
+  const phase = angles.length ? Math.atan2(sy, sx) / 6 : 0;
+  const geos = [];
+  const cable = new THREE.CylinderGeometry(0.33, 0.33, ySplay - bot, 4, 1, true).translate(0, (bot + ySplay) / 2, 0);
+  geos.push(cable.toNonIndexed());
+  const a = new THREE.Vector3(0, ySplay, 0), up = new THREE.Vector3(0, 1, 0), q = new THREE.Quaternion();
+  for (let k = 0; k < 6; k++) {
+    const t = phase + k * Math.PI / 3;
+    const b = new THREE.Vector3(Math.cos(t) * rRing, top - 0.4, Math.sin(t) * rRing);
+    const d = b.clone().sub(a), len = d.length();
+    const w = new THREE.CylinderGeometry(0.12, 0.12, len, 3, 1, true);
+    w.applyQuaternion(q.setFromUnitVectors(up, d.normalize()));
+    w.translate((a.x + b.x) / 2, (a.y + b.y) / 2, (a.z + b.z) / 2);
+    geos.push(w.toNonIndexed());
+  }
+  geos.push(new THREE.TorusGeometry(rRing, 0.3, 3, 18).rotateX(Math.PI / 2).translate(0, top - 0.4, 0).toNonIndexed());
+  return mergeGeometries(geos);
+}
+
+// 2D person stand-in: a simple silhouette; the white shirt area takes the instance colour.
+function personStandIn() {
+  const cv = document.createElement('canvas'); cv.width = 32; cv.height = 112;
+  const c = cv.getContext('2d');
+  c.fillStyle = '#c69a7c'; c.beginPath(); c.arc(16, 9, 7, 0, 7); c.fill();              // head
+  c.fillStyle = '#ffffff'; c.beginPath(); c.roundRect(5, 17, 22, 40, 6); c.fill();      // shirt
+  c.fillRect(1, 20, 5, 32); c.fillRect(26, 20, 5, 32);                                  // sleeves
+  c.fillStyle = '#2e3138'; c.fillRect(7, 55, 8, 52); c.fillRect(17, 55, 8, 52);        // legs
+  c.fillStyle = '#1a1a1c'; c.fillRect(6, 104, 10, 8); c.fillRect(16, 104, 10, 8);      // shoes
+  const map = new THREE.CanvasTexture(cv);
+  map.colorSpace = THREE.SRGBColorSpace;
+  const m = new THREE.MeshStandardMaterial({ map, alphaTest: 0.5, roughness: 0.85, side: THREE.DoubleSide });
+  m.onBeforeCompile = (sh) => {
+    sh.fragmentShader = sh.fragmentShader.replace('#include <color_fragment>', `
+      #ifdef USE_INSTANCING_COLOR
+        diffuseColor.rgb = mix(diffuseColor.rgb, vColor, step(0.97, min(diffuseColor.r, min(diffuseColor.g, diffuseColor.b))));
+      #endif`);
+  };
+  return m;
+}
+
 for (const [name, parts] of byNode) {
   if (name.startsWith('WEB_anchors')) {
-    // Far stand-in: one straight cable plus the cap ring, sized from the real anchor.
-    const box = new THREE.Box3();
-    parts.forEach((p) => { p.geometry.computeBoundingBox(); box.union(p.geometry.boundingBox); });
-    const h = box.max.y - box.min.y, r = Math.max(box.max.x - box.min.x, box.max.z - box.min.z) / 2;
-    const cable = new THREE.CylinderGeometry(0.35, 0.35, h, 4, 1, true).translate(0, box.min.y + h / 2, 0);
-    const ring = new THREE.TorusGeometry(Math.min(r, 4), 0.35, 3, 12).rotateX(Math.PI / 2).translate(0, box.max.y - 0.5, 0);
-    const geo = mergeGeometries([cable.toNonIndexed(), ring.toNonIndexed()]);
-    lodGroup(parts, geo, new THREE.MeshStandardMaterial({ color: 0x8a8b8d, metalness: 0.8, roughness: 0.45 }), 350, false);
+    lodGroup(parts, anchorStandIn(parts), new THREE.MeshStandardMaterial({ color: 0x8a8b8d, metalness: 0.8, roughness: 0.45 }), 650, false);
   } else if (name.startsWith('WEB_people')) {
-    // Each pose kind is its own node; LOD each separately with a camera-facing 2D stand-in.
+    // Crowd: camera-facing 2D stand-ins at every distance (only the observer is a full model).
     const quad = new THREE.PlaneGeometry(0.5, 1.75).translate(0, 0.875, 0);
     const shirts = [0xd8d8d8, 0x33477a, 0xa8302a, 0x6d7445, 0xc8781a, 0x2f8a8a, 0x505054, 0xcdb48e].map((c) => new THREE.Color(c));
     const cols = Array.from({ length: parts[0].count }, (_, i) => shirts[i % shirts.length]);
-    lodGroup(parts, quad, new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.8, side: THREE.DoubleSide }), 120, true, cols);
+    lodGroup(parts, quad, personStandIn(), -1, true, cols);
   } else if (name.startsWith('WEB_freight')) {
     // Box imposters: side and top renders of the real pallet load mapped onto its bounding box.
     for (const im of parts) {
@@ -361,32 +450,44 @@ for (const [name, parts] of byNode) {
 }
 scene.add(root);
 document.getElementById('loading').remove();
-window.__vault = { renderer, scene, camera, THREE };
+window.__vault = { renderer, scene, camera, THREE, lods };
 
 // Camera + controls.
 const controls = new OrbitControls(camera, renderer.domElement);
 controls.enableDamping = true;
 controls.maxDistance = 60000;
+const EYE = 1.7;
+const ground = (p) => H(p.x, -p.z);
 function goTo(c) {
   const p = b2t(c.pos), d = b2t(c.dir).normalize();
   camera.fov = Math.min(Math.max(c.fov, 20), 75);
   camera.updateProjectionMatrix();
   camera.position.copy(p);
-  const dist = Math.max(20, p.y * 2);
+  const dist = Math.max(20, (p.y - ground(p)) * 2);
   controls.target.copy(p).addScaledVector(d, dist);
   controls.update();
-  camera.lookAt(controls.target);
-  if (mode === 'Walk') setMode('Walk');
+  camera.lookAt(p.clone().add(d));
+}
+// Start: standing on the ground a few metres behind the observer in the SpaceX shirt.
+function behindObserver() {
+  const o = info.observer;
+  if (!o) return goTo(info.cameras.find((c) => c.name.startsWith('07')) || info.cameras[0]);
+  const feet = b2t(o.pos), fwd = b2t(o.forward).normalize();
+  camera.fov = 60; camera.updateProjectionMatrix();
+  camera.position.copy(feet).addScaledVector(fwd, -3.2);
+  camera.position.x += fwd.z * 0.6; camera.position.z -= fwd.x * 0.6;     // a little off his shoulder
+  camera.position.y = ground(camera.position) + EYE;
+  camera.lookAt(feet.clone().addScaledVector(fwd, 30).setY(feet.y + 9));
 }
 
-// Modes: orbit, fly (WASD/QE) and walk (eye height above the terrain). Touch devices get two joysticks.
-const MODES = ['Orbit', 'Fly', 'Walk'];
+// Modes: Walk / fly (walk on the ground; E / space or the up button takes off and you fly where
+// you look; Q / C or the down button lands) and Orbit. The camera never goes below the ground.
+const MODES = ['Walk / fly', 'Orbit'];
 const HELP = {
+  'Walk / fly': 'WASD move · E/space up · Q/C down · shift faster · drag to look',
   Orbit: 'drag to orbit · scroll to zoom · right-drag to pan',
-  Fly: 'WASD move · Q/E down/up · shift faster · drag to look',
-  Walk: 'WASD walk · shift run · drag to look',
 };
-let mode = 'Orbit';
+let mode = MODES[0];
 const keys = new Set();
 const modeBtn = document.getElementById('walk');
 const pads = document.getElementById('pads');
@@ -394,27 +495,36 @@ function setMode(next) {
   mode = next;
   controls.enabled = mode === 'Orbit';
   if (mode === 'Orbit') {            // orbit around a point ahead of the current view
-    controls.target.copy(camera.position).add(new THREE.Vector3(0, 0, -Math.max(20, camera.position.y)).applyQuaternion(camera.quaternion));
+    const ahead = Math.max(20, (camera.position.y - ground(camera.position)) * 1.5);
+    controls.target.copy(camera.position).add(new THREE.Vector3(0, 0, -ahead).applyQuaternion(camera.quaternion));
     controls.update();
-  }
-  modeBtn.textContent = MODES[(MODES.indexOf(mode) + 1) % MODES.length];
-  document.getElementById('help').textContent = touch && mode !== 'Orbit' ? 'left stick look · right stick move' : HELP[mode];
-  pads.hidden = !(touch && mode !== 'Orbit');
-  if (mode === 'Walk') {
-    camera.position.y = H(camera.position.x, -camera.position.z) + 1.7;
-    const eu = new THREE.Euler().setFromQuaternion(camera.quaternion, 'YXZ'); eu.x = 0; eu.z = 0;
+  } else {
+    const eu = new THREE.Euler().setFromQuaternion(camera.quaternion, 'YXZ'); eu.z = 0;
     camera.quaternion.setFromEuler(eu);
   }
+  modeBtn.textContent = MODES[(MODES.indexOf(mode) + 1) % MODES.length];
+  document.getElementById('help').textContent = touch && mode !== 'Orbit' ? 'left stick look · right stick move · ▲▼ up/down' : HELP[mode];
+  pads.hidden = !(touch && mode !== 'Orbit');
 }
 modeBtn.onclick = () => setMode(MODES[(MODES.indexOf(mode) + 1) % MODES.length]);
 const sel = document.getElementById('cams');
+sel.add(new Option('Behind the observer (start)', 'start'));
 info.cameras.forEach((c, i) => sel.add(new Option(c.name, i)));
-sel.onchange = () => sel.value !== '' && goTo(info.cameras[+sel.value]);
-goTo(info.cameras.find((c) => c.name.startsWith('07')) || info.cameras[0]);
-setMode('Orbit');
+sel.onchange = () => {
+  if (sel.value === 'start') behindObserver();
+  else if (sel.value !== '') goTo(info.cameras[+sel.value]);
+  setMode(mode);
+};
+behindObserver();
+setMode(MODES[0]);
 updateLods(true);
 
-addEventListener('keydown', (e) => { if (e.target === document.body) keys.add(e.key.toLowerCase()); });
+addEventListener('keydown', (e) => {
+  if (e.target === document.body || e.target === renderer.domElement) {
+    keys.add(e.key.toLowerCase());
+    if (e.key === ' ') e.preventDefault();
+  }
+});
 addEventListener('keyup', (e) => keys.delete(e.key.toLowerCase()));
 addEventListener('blur', () => keys.clear());
 function look(dx, dy) {
@@ -452,29 +562,43 @@ function stick(el) {
 }
 const lookStick = stick(document.getElementById('lookPad'));
 const moveStick = stick(document.getElementById('movePad'));
+function held(id) {
+  const s = { on: false }, el = document.getElementById(id);
+  el.addEventListener('pointerdown', (e) => { s.on = true; el.setPointerCapture(e.pointerId); e.preventDefault(); e.stopPropagation(); });
+  for (const t of ['pointerup', 'pointercancel']) el.addEventListener(t, () => { s.on = false; });
+  return s;
+}
+const upBtn = held('upBtn'), downBtn = held('downBtn');
 
 addEventListener('resize', () => {
   camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix(); renderer.setSize(innerWidth, innerHeight);
 });
 const clock = new THREE.Clock();
+const fwd = new THREE.Vector3(), side = new THREE.Vector3();
 renderer.setAnimationLoop(() => {
   const dt = Math.min(clock.getDelta(), 0.1);
-  if (mode === 'Orbit') controls.update();
-  else {
+  if (mode === 'Orbit') {
+    controls.update();
+    const g = ground(camera.position) + 1.0;           // keep the orbit camera above the ground
+    if (camera.position.y < g) { camera.position.y = g; camera.lookAt(controls.target); }
+  } else {
     look(lookStick.x * 1.8 * dt, lookStick.y * 1.4 * dt);
-    const kx = keys.has('d') - keys.has('a') + moveStick.x, kz = keys.has('s') - keys.has('w') + moveStick.y;
+    const kx = keys.has('d') - keys.has('a') + moveStick.x, kz = keys.has('w') - keys.has('s') - moveStick.y;
+    const ky = (keys.has('e') || keys.has(' ') || upBtn.on) - (keys.has('q') || keys.has('c') || downBtn.on);
     const run = keys.has('shift') || Math.hypot(moveStick.x, moveStick.y) > 0.95;
-    if (mode === 'Fly') {
-      const v = new THREE.Vector3(kx, keys.has('e') - keys.has('q'), kz);
-      const speed = (run ? 120 : 15) * Math.max(1, camera.position.y / 20);
-      camera.position.add(v.applyQuaternion(camera.quaternion).multiplyScalar(speed * dt));
-    } else {
-      const yaw = new THREE.Euler().setFromQuaternion(camera.quaternion, 'YXZ').y;
-      const v = new THREE.Vector3(kx, 0, kz).applyAxisAngle(THREE.Object3D.DEFAULT_UP, yaw);
-      camera.position.addScaledVector(v, (run ? 6 : 1.6) * dt);
-      camera.position.y = H(camera.position.x, -camera.position.z) + 1.7;
-    }
+    const alt = camera.position.y - (ground(camera.position) + EYE);
+    const walking = alt < 0.5 && ky <= 0;
+    camera.getWorldDirection(fwd);
+    if (walking) fwd.y = 0;                             // on the ground: walk level and follow the terrain
+    fwd.normalize();
+    side.crossVectors(fwd, camera.up).normalize();
+    const speed = (walking ? 1.8 : Math.max(4, alt * 0.8)) * (run ? 4 : 1);
+    camera.position.addScaledVector(fwd, kz * speed * dt).addScaledVector(side, kx * speed * dt);
+    camera.position.y += ky * Math.max(3, alt * 0.8) * (run ? 4 : 1) * dt;
+    const floor = ground(camera.position) + EYE;
+    if (walking || camera.position.y < floor) camera.position.y = floor;
   }
   updateLods(false);
+  sunDisc.position.copy(camera.position).addScaledVector(sunDir, 250000);
   renderer.render(scene, camera);
 });
