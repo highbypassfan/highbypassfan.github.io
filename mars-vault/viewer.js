@@ -491,7 +491,8 @@ let mode = MODES[0];
 const keys = new Set();
 const modeBtn = document.getElementById('walk');
 const pads = document.getElementById('pads');
-function setMode(next) {
+// land: switching into Walk / fly from Orbit puts you on the ground, standing.
+function setMode(next, land = false) {
   mode = next;
   controls.enabled = mode === 'Orbit';
   if (mode === 'Orbit') {            // orbit around a point ahead of the current view
@@ -500,13 +501,14 @@ function setMode(next) {
     controls.update();
   } else {
     const eu = new THREE.Euler().setFromQuaternion(camera.quaternion, 'YXZ'); eu.z = 0;
+    if (land) { eu.x = Math.max(-0.3, Math.min(0.5, eu.x)); camera.position.y = ground(camera.position) + EYE; }
     camera.quaternion.setFromEuler(eu);
   }
   modeBtn.textContent = MODES[(MODES.indexOf(mode) + 1) % MODES.length];
   document.getElementById('help').textContent = touch && mode !== 'Orbit' ? 'left stick look · right stick move · ▲▼ up/down' : HELP[mode];
   pads.hidden = !(touch && mode !== 'Orbit');
 }
-modeBtn.onclick = () => setMode(MODES[(MODES.indexOf(mode) + 1) % MODES.length]);
+modeBtn.onclick = () => setMode(MODES[(MODES.indexOf(mode) + 1) % MODES.length], true);
 const sel = document.getElementById('cams');
 sel.add(new Option('Behind the observer (start)', 'start'));
 info.cameras.forEach((c, i) => sel.add(new Option(c.name, i)));
