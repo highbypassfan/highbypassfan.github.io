@@ -471,7 +471,7 @@ function goTo(c) {
 // Start: standing on the ground a few metres behind the observer in the SpaceX shirt.
 function behindObserver() {
   const o = info.observer;
-  if (!o) return goTo(info.cameras.find((c) => c.name.startsWith('07')) || info.cameras[0]);
+  if (!o) return goTo(info.cameras.find((c) => c.name.startsWith('01')) || info.cameras[0]);
   const feet = b2t(o.pos), fwd = b2t(o.forward).normalize();
   camera.fov = 60; camera.updateProjectionMatrix();
   camera.position.copy(feet).addScaledVector(fwd, -3.2);
