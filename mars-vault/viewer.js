@@ -141,6 +141,8 @@ root.traverse((o) => {
   const n = (o.parent?.name || '') + ' ' + o.name;
   if (n.includes('WEB_TERRAIN')) { o.material = groundMat; return; }
   if (n.includes('membrane')) { o.material = film; o.renderOrder = 2; return; }
+  // Farm substation: keep only the white equipment enclosures (no fence, poles, gantries or pad).
+  if (/Solar_farm_substation/.test(n) && !/enclosure/i.test(o.material.name)) { o.visible = false; return; }
   if (o.isInstancedMesh) return;
   const key = o.geometry.uuid + '|' + o.material.uuid;
   if (!plain.has(key)) plain.set(key, []);
@@ -334,8 +336,15 @@ for (const [name, parts] of byNode) {
   for (let j = 0; j < ny; j++) for (let i = 0; i < nx; i++) {
     const x = F.x0 + i * dx, y = F.y0 + j * dy;
     if (band(y, F.track_every, F.track_half, F.y0 + F.track_every / 2) || band(x, w / 2, F.spine_half, F.x0 + w / 2)) continue;
-    const z = H(x, y), pitch = Math.atan2(H(x, y + half) - H(x, y - half), F.seg);
-    m.makeRotationFromEuler(e.set(pitch, 0, 0)).setPosition(x, z, -y);
+    // Fit a line through the terrain along the segment, then lift it to clear every sample
+    // (the rendered terrain triangulates its grid differently from this bilinear lookup).
+    const z0 = H(x, y - half), z1 = H(x, y + half), zc = (z0 + z1) / 2;
+    let lift = 0;
+    for (const t of [-1, -0.5, 0, 0.5, 1]) for (const ox of [-run, 0, run]) {
+      lift = Math.max(lift, H(x + ox, y + t * half) - (zc + (z1 - z0) / 2 * t));
+    }
+    const pitch = Math.atan2(z1 - z0, F.seg);
+    m.makeRotationFromEuler(e.set(pitch, 0, 0)).setPosition(x, zc + lift + 0.12, -y);
     mats.push(m.clone());
   }
   chunked(g, mat, mats, null, 'solar rows');
