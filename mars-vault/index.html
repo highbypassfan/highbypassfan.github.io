@@ -12,7 +12,10 @@
     #ui { position: fixed; top: 12px; left: 12px; display: flex; gap: 8px; align-items: center; flex-wrap: wrap;
           background: rgba(0, 0, 0, 0.72); color: #fff; border: 1px solid #252525; padding: 8px 10px; border-radius: 8px; font-size: 13px; max-width: calc(100vw - 44px); }
     #ui select, #ui button { background: #000; color: #fff; border: 1px solid #444; font-family: inherit; border-radius: 5px; padding: 4px 6px; font-size: 13px; }
-    #ui a { color: #ff3b30; text-decoration: none; }
+    #uiOpen { display: none; }
+    #ui.min { padding: 4px; gap: 0; }
+    #ui.min > * { display: none; }
+    #ui.min > #uiOpen { display: block; font-size: 16px; padding: 2px 8px; }
     #help { color: #b8b8b8; }
     #pads[hidden] { display: none; }
     .pad { position: fixed; bottom: 28px; width: 120px; height: 120px; border-radius: 50%; touch-action: none;
@@ -35,7 +38,7 @@
 </head>
 <body>
   <div id="ui">
-    <a href="../index.html">&larr; home</a>
+    <button id="uiOpen" title="Show controls">&#9776;</button>
     <strong>Mars Tensile Vault</strong>
     <select id="cams"><option value="">Viewpoints…</option></select>
     <button id="walk" title="Switch between walk/fly and orbit">Orbit</button>
@@ -47,6 +50,6 @@
     <button class="ud" id="upBtn">&#9650;</button><button class="ud" id="downBtn">&#9660;</button>
   </div>
   <div id="loading">Loading the vault… (~15 MB)</div>
-  <script type="module" src="viewer.js?17"></script>
+  <script type="module" src="viewer.js?18"></script>
 </body>
 </html>

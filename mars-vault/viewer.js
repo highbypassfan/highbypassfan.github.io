@@ -521,6 +521,17 @@ behindObserver();
 setMode(MODES[0]);
 updateLods(true);
 
+// On touch screens the control panel folds into a small button once you start moving
+// (the button opens it again); on desktop it stays.
+const ui = document.getElementById('ui');
+const fold = () => { if (touch) ui.classList.add('min'); };
+document.getElementById('uiOpen').onclick = () => ui.classList.remove('min');
+renderer.domElement.addEventListener('pointerdown', fold);
+renderer.domElement.addEventListener('wheel', fold, { passive: true });
+for (const id of ['lookPad', 'movePad', 'upBtn', 'downBtn']) document.getElementById(id).addEventListener('pointerdown', fold);
+const MOVE_KEYS = new Set(['w', 'a', 's', 'd', 'q', 'e', 'c', ' ', 'arrowup', 'arrowdown', 'arrowleft', 'arrowright']);
+addEventListener('keydown', (e) => { if (MOVE_KEYS.has(e.key.toLowerCase()) && !ui.contains(e.target)) fold(); });
+
 addEventListener('keydown', (e) => {
   if (e.target === document.body || e.target === renderer.domElement) {
     keys.add(e.key.toLowerCase());
