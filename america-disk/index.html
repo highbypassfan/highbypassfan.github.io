@@ -103,11 +103,11 @@ body{
 .cell{position:relative;display:flex;align-items:center;min-width:0;flex:1;height:21px;--barmax:100%}
 .cell .ghost,.cell .bar2{position:absolute;left:0;top:0;bottom:0;pointer-events:none;transition:width .3s}
 .cell .ghost{width:calc(var(--p0) * var(--barmax));background:repeating-linear-gradient(45deg,rgba(156,149,131,.45) 0 3px,transparent 3px 7px)}
-.cell .bar2{width:calc(var(--p) * var(--barmax));background:linear-gradient(90deg,#d3dcef 0%,#e8edf7 100%)}
-.row.major .bar2{background:linear-gradient(90deg,#9fb4e0 0%,#c6d3ee 100%)}
-.row.root .bar2{width:calc(var(--p) * 100%);background:linear-gradient(90deg,#6f8fd3 0%,#a6badf 70%,#c3d0ec 100%)}
+.cell .bar2{width:calc(var(--p) * var(--barmax));background:#c6d3ee}
+.row.major .bar2{background:#9fb4e0}
+.row.root .bar2{width:calc(var(--p) * 100%);background:#6f8fd3}
 .row.root .ghost{width:calc(var(--p0) * 100%)}
-.row.locked .bar2{background:linear-gradient(90deg,#ddd5bd 0%,#ebe5d4 100%)}
+.row.locked .bar2{background:#dcd5bd}
 .cell .szc{position:relative;flex:none;width:6.4em;text-align:right;padding-right:.75em;font:12.5px var(--font-num);font-variant-numeric:tabular-nums}
 .cell .nm{position:relative;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .row.major .szc,.row.major .nm,.row.root .szc,.row.root .nm{font-weight:700}
@@ -156,8 +156,12 @@ body{
 .tile{position:absolute;border:1px solid var(--well);overflow:hidden;padding:4px 5px;color:#fff;font-size:11.5px;line-height:1.2;cursor:pointer;transition:all .35s ease}
 .tile b{display:block;font-weight:800}
 .tile .num{font-size:11px;opacity:.9}
-.tile.s1{background:var(--spend)} .tile.s2{background:#7c6bb0} .tile.s3{background:#3d7f86} .tile.locked{background:var(--lock)}
+.tile.s1,.grp.s1{background:var(--spend)} .tile.s2,.grp.s2{background:#7c6bb0} .tile.s3,.grp.s3{background:#3d7f86} .tile.locked,.grp.locked{background:var(--lock)}
 .tile.shr{background-image:repeating-linear-gradient(45deg,rgba(255,255,255,.18) 0 3px,transparent 3px 8px)}
+.grp{position:absolute;overflow:hidden;border:1px solid var(--well);color:#fff;cursor:pointer;transition:all .35s ease}
+.gh{position:absolute;left:0;right:0;top:0;height:18px;display:flex;justify-content:space-between;align-items:center;gap:6px;padding:0 6px;font:800 11.5px/1 var(--font-ui);background:rgba(0,0,0,.18);pointer-events:none}
+.gh span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.gh .num{font-family:var(--font-num);font-weight:600;opacity:.9;flex:none}
 .maplegend{display:flex;gap:14px;flex-wrap:wrap;font-size:12px}
 .maplegend i{display:inline-block;width:12px;height:10px;margin-right:5px;vertical-align:-1px}
 
